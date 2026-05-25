@@ -1,23 +1,24 @@
-// import { defineConfig } from 'vite'
-// import react from '@vitejs/plugin-react'
-
-// // https://vite.dev/config/
-// export default defineConfig({
-//   plugins: [react()],
-// })
-// import { defineConfig } from 'vite'
-// import react from '@vitejs/plugin-react'
-
-// // https://vitejs.dev/config/
-// export default defineConfig({
-//   plugins: [react()],
-// })
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// Use '/' for local dev, '/IndusConnect-/' for GitHub Pages production build
+const isProd = process.env.NODE_ENV === 'production';
+
 export default defineConfig({
-  // تأكد أن هذا الاسم هو نفس اسم الـ Repository بتاعك على GitHub
-  // إذا كان اسم الريبو هو IndusConnect- (بما فيه الشرطة)، اكتبه كما هو
-  base: '/IndusConnect-/', 
+  base: isProd ? '/IndusConnect-/' : '/',
   plugins: [react()],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/uploads': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  }
 })

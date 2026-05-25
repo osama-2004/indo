@@ -3,8 +3,8 @@
    ============================================================================ */
 .page-wrapper {
   max-width: 1440px;
-  width: 90%; /* إضافة نسبة مئوية لضمان عدم خروج المحتوى في الشاشات الأصغر */
-  margin: 120px auto 50px auto; /* تقليل المارجن العلوي قليلاً ليتناسب مع الناف بار */
+  width: 90%; 
+  margin: 120px auto 50px auto; 
   font-family: sans-serif;
   color: #333;
 }
@@ -14,44 +14,39 @@
    ============================================================================ */
 .detail-card-main {
   display: flex;
-  flex-wrap: wrap; /* للسماح بنزول المحتوى في الشاشات الصغيرة */
+  flex-wrap: wrap; 
   gap: 50px;
-  margin-top: -50px;
-  margin-left: -120px;
+ 
+  margin-top: 0;
+  margin-left: 0;
   margin-bottom: 50px;
-  align-items: flex-start; /* لضبط المحاذاة من الأعلى */
+  align-items: flex-start; 
 }
 
 /* Left Column: Image Area */
 .image-column {
-  /* margin-top: -50px; */
   flex: 1;
- 
-  padding-left: 100px;
-  /* top: 191px; */
-  /* margin-left: 130px; */
-  /* min-width: 400px; */
-  max-width: 650px; 
+  padding-left: 0;
+  min-width: 300px; 
 }
 
 .main-image-holder {
-  /* top: 183px; */
-  /* left: 80px; */
-   height: 636px;
-  width: 637px;
+  margin-top: -45px;
+  margin-left: -30px;
+  width: 550px;
+  height: 600px;
+  aspect-ratio: 4/5; 
   position: relative;
   background: #f0f0f0;
   border-radius: 20px;
   overflow: hidden;
-  width: 100%;
-  aspect-ratio: 4/5; /* الحفاظ على نسبة طول وعرض مثالية للصورة */
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); /* إضافة ظل خفيف لشكل أنيق */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); 
 }
 
 .img-fluid { 
-  width: 632px;
-  height: 632px;
-  object-fit: cover; /* لضمان ملء الصورة للحاوية بدون تمطيط */
+  width: 100%;
+  height: 100%;
+  object-fit: cover; 
   display: block; 
 }
 
@@ -69,6 +64,9 @@
   cursor: pointer;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .heart-icon-btn:hover {
   transform: scale(1.1);
@@ -78,11 +76,12 @@
 /* Right Column: Info Area */
 .info-column {
   flex: 1;
-  min-width: 400px;
+  margin-top: -50px;
+  min-width: 300px;
   display: flex;
   flex-direction: column;
-  justify-content: center; /* محاذاة عمودية في المنتصف */
-  padding: 80px 0; /* مسافات داخلية معقولة */
+  justify-content: center; 
+  padding: 20px 0; 
 }
 
 .category-path { 
@@ -108,6 +107,7 @@
   align-items: center; 
   gap: 10px; 
   margin-bottom: 25px; 
+  flex-wrap: wrap; 
 }
 .stars-gold { display: flex; gap: 2px; }
 .star-filled { color: #ffcc00; font-size: 20px; }
@@ -151,6 +151,7 @@
   gap: 15px; 
   margin-top: 20px; 
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .qty-selector {
@@ -162,6 +163,8 @@
   padding: 8px 20px;
   width: 140px;
   background: white;
+  height: 62px;
+  box-sizing: border-box;
 }
 .qty-selector button { 
   border: none; 
@@ -173,7 +176,7 @@
 }
 .qty-selector span { font-weight: bold; font-size: 18px; }
 
-.btn-add-cart {
+.btn-add-cart, .btn-rfq {
   border: none;
   border-radius: 30px;
   padding: 15px 30px;
@@ -183,37 +186,31 @@
   transition: all 0.3s ease;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-.btn-rfq{
-  border: none;
-  border-radius: 30px;
-  padding: 15px 30px;
-  font-weight: bold;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  height: 62px;
+  flex: 1; 
+  min-width: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .btn-add-cart {
-  /* width: 101px; */
-  height: 62px; 
   background: #c24438; 
   color: white; 
-  flex: 0.3; 
   box-shadow: 0 4px 15px rgba(194, 68, 56, 0.3);
 }
 .btn-add-cart:hover { 
   background: #a5352b; 
-  transform: translateY(-2px); }
+  transform: translateY(-2px); 
+}
 
 .btn-rfq { 
-  height: 62px;
   background: #222; 
   color: white; 
-  flex: 0.3; 
 }
-.btn-rfq:hover { background: #000; transform: translateY(-2px); }
+.btn-rfq:hover { 
+  background: #000; 
+  transform: translateY(-2px); 
+}
 
 /* ============================================================================
    3. SELLER INFO & TRUST BADGES
@@ -245,22 +242,19 @@
 .rating-tag { background: #fff8e1; color: #f57f17; padding: 5px 10px; border-radius: 15px; font-size: 13px; font-weight: bold; }
 
 .trust-badges-grid {
-  width: 1088.463134765625px;
-  margin: 0 auto;
+  width: 1000px;
+  margin: 0 auto 60px auto;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  /* background: #fafafa; */
-  border-radius: 15px;
-  margin-bottom: 60px;
+  justify-content: space-around; 
+  align-items: flex-start;
+  padding: 20px 0;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 20px;
 }
 .badge-item { 
   text-align: center;
-  flex: 0.1;
-/* min-width: 58px; */
+  flex: 1;
+  min-width: 90px;
 }
 .badge-item span { font-size: 32px; display: block; margin-bottom: 10px; color: #c24438; }
 .badge-item p { font-size: 14px; font-weight: 600; color: #555; margin: 0; }
@@ -278,12 +272,13 @@
   gap: 60px;
   border-bottom: 2px solid #eaeaea;
   margin-bottom: 40px;
+  flex-wrap: wrap; 
 }
 
 .tab-link {
   background: none; 
   border: none; 
-  padding: 15px 20px; 
+  padding: 15px 10px; 
   font-size: 20px; 
   font-weight: 500;
   cursor: pointer; 
@@ -310,7 +305,7 @@
 /* Reviews List Area */
 .reviews-list-area {
   max-width: 900px;
-  margin: 0 auto; /* تمركز منطقة التقييمات في المنتصف */
+  margin: 0 auto; 
 }
 
 .list-header {
@@ -318,10 +313,12 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 15px;
 }
 .list-header h4 {
   font-size: 22px;
-  color: #222 !important; /* تغطية اللون الأحمر بناء على طلبك ليكون أكثر احترافية */
+  color: #222; 
   margin: 0;
 }
 .sort-box {
@@ -345,6 +342,7 @@
   height: 60px; 
   border-radius: 50%;
   object-fit: cover; 
+  flex-shrink: 0; 
 }
 .review-content { flex: 1; }
 .review-top-line {
@@ -352,12 +350,12 @@
   gap: 15px;
   align-items: center;
   margin-bottom: 8px; 
+  flex-wrap: wrap;
 }
 .review-top-line h5 { font-size: 18px; margin: 0; color: #333; }
 .mini-stars {
-  /* background: #ffcc00; */
   color: #ffcc00;
-   font-size: 14px; 
+  font-size: 14px; 
 }
 .review-text { color: #555; line-height: 1.6; margin: 0; font-size: 15px; }
 
@@ -375,11 +373,84 @@
 }
 .btn-more-red:hover { background: #a5352b; }
 
-/* Responsive adjustments */
-@media (max-width: 900px) {
+/* ============================================================================
+    RESPONSIVE MEDIA QUERIES 
+   ============================================================================ */
+
+@media (max-width: 1024px) {
+  .trust-badges-grid {
+    width: 100%; 
+    padding: 20px;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 992px) {
   .detail-card-main { gap: 30px; }
-  .image-column, .info-column { min-width: 100%; }
-  .info-column { padding: 0; }
-  .tabs-nav { gap: 20px; }
-  .tab-link { font-size: 16px; padding: 10px; }
+  .image-column { min-width: 100%; } 
+  
+  .main-image-holder {
+    width: 100%;       
+    height: auto;
+    max-width: 550px;  
+    margin-top: 0;     
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .info-column { 
+    min-width: 100%; 
+    padding-top: 0; 
+    margin-top: 0;     
+  }
+  
+  .main-product-title { font-size: 30px; }
+  .tabs-nav { gap: 30px; }
+}
+
+/* --- الهواتف المحمولة (Mobiles - Under 768px) --- */
+@media (max-width: 768px) {
+  .page-wrapper {
+    margin-top: 100px;
+    width: 95%;
+  }
+  
+  .main-product-title { font-size: 26px; }
+  .price-display { font-size: 24px; }
+  
+  .action-row {
+    flex-direction: column; 
+    align-items: stretch;
+  }
+  
+  .qty-selector {
+    width: 100%;
+    justify-content: space-around;
+  }
+  
+  .trust-badges-grid {
+    gap: 15px;
+  }
+  .badge-item {
+    flex: 45%; 
+    min-width: unset;
+  }
+  
+  .tabs-nav { gap: 10px; }
+  .tab-link { font-size: 16px; padding: 10px 5px; }
+  
+  .single-review {
+    flex-direction: column; 
+    align-items: flex-start;
+    gap: 15px;
+  }
+}
+
+/* --- الهواتف الصغيرة جداً (Small Mobiles - Under 480px) --- */
+@media (max-width: 480px) {
+  .main-product-title { font-size: 22px; }
+  .badge-item {
+    flex: 100%; 
+  }
+  .tab-link { font-size: 14px; }
 }

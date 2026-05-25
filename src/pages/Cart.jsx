@@ -1,93 +1,56 @@
-import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useCart, useAuth } from '../App';
 import './Cart.css'; 
 
-export default function CartPage() {
-  const [items, setItems] = useState(() => {
-    const saved = localStorage.getItem('cart');
-    return saved ? JSON.parse(saved) : [];
-  });
+const getSmartImageSrc = (imagePath) => {
+  if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
+  if (imagePath.startsWith('http') || imagePath.startsWith('data:') || imagePath.startsWith('/uploads/')) {
+    return imagePath;
+  }
+  const baseUrl = import.meta.env.BASE_URL;
+  if (baseUrl && baseUrl !== '/' && imagePath.startsWith(baseUrl)) {
+    return imagePath;
+  }
+  const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  const cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+  return `${cleanBase}${cleanPath}`;
+};
 
+export default function CartPage() {
+  const { cart, updateQuantity, removeFromCart } = useCart();
+  const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
 
-  const loadCart = () => {
-    const saved = localStorage.getItem('cart');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setItems(Array.isArray(parsed) ? parsed : []);
-      } catch (e) {
-        setItems([]);
-      }
-    } else {
-      setItems([]);
+  const handleQtyChange = async (productId, currentQty, delta) => {
+    const nextQty = currentQty + delta;
+    if (nextQty < 1) return;
+    try {
+      await updateQuantity(productId, nextQty);
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  useEffect(() => {
-    loadCart();
-    window.addEventListener('storage', loadCart);
-    window.addEventListener('cartUpdated', loadCart);
-    return () => {
-      window.removeEventListener('storage', loadCart);
-      window.removeEventListener('cartUpdated', loadCart);
-    };
-  }, []);
-
-  const updateQty = (id, delta) => {
-    const updated = items.map(it =>
-      it.id === id ? { ...it, quantity: Math.max(1, (Number(it.quantity) || 1) + delta) } : it
-    );
-    setItems(updated);
-    localStorage.setItem('cart', JSON.stringify(updated));
-    window.dispatchEvent(new Event('cartUpdated'));
-  };
-
-  const remove = (id) => {
-    const updated = items.filter(it => it.id !== id);
-    setItems(updated);
-    localStorage.setItem('cart', JSON.stringify(updated));
-    window.dispatchEvent(new Event('cartUpdated'));
-  };
-
-  // ==========================================
-  // 🛠️ FIX: دالة الصور الذكية (تمنع تكرار المسار)
-  // ==========================================
-  const getSmartImageSrc = (imagePath) => {
-    if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
-    if (imagePath.startsWith('http') || imagePath.startsWith('data:')) return imagePath;
-
-    const baseUrl = import.meta.env.BASE_URL;
-    
-    // لو المسار أصلاً بيحتوي على الـ BASE_URL (زي ما Services بتبعته)، رجعه زي ما هو!
-    if (baseUrl && baseUrl !== '/' && imagePath.startsWith(baseUrl)) {
-      return imagePath;
+  const handleRemove = async (productId) => {
+    try {
+      await removeFromCart(productId);
+    } catch (err) {
+      console.error(err);
     }
-
-    // لو مفيش فيه BASE_URL، ضيفه
-    const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
-    const cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
-    
-    return `${cleanBase}${cleanPath}`;
   };
 
-  // ==========================================
-  // 🛠️ التعديل الجديد: فحص حالة تسجيل الدخول قبل الدفع
-  // ==========================================
   const handleCheckout = () => {
-    const isAuth = localStorage.getItem('isLoggedIn') === 'true';
-    
-    if (isAuth) {
+    if (isLoggedIn) {
       navigate('/checkout');
     } else {
-      alert('Please log in first to proceed to checkout!'); // رسالة تنبيه للمستخدم
+      alert('Please log in first to proceed to checkout!');
       navigate('/login');
     }
   };
 
-  const subtotal = items.reduce((s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0);
-  const shipping = items.length > 0 ? 45 : 0;
-  const tax = Math.round(subtotal * 0.05);
+  const subtotal = cart.reduce((s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0);
+  const shipping = cart.length > 0 ? 50 : 0; // matching backend flat shipping rate 50 EGP
+  const tax = Math.round(subtotal * 0.14); // matching backend 14% VAT EGP
   const total = subtotal + shipping + tax;
 
   return (
@@ -95,7 +58,7 @@ export default function CartPage() {
       <div className="cart-inner">
         <h1 className="cart-title">Shopping Cart</h1>
 
-        {items.length === 0 ? (
+        {cart.length === 0 ? (
           <div className="cart-empty">
             <div className="cart-empty-icon">🛒</div>
             <h2>Your cart is empty</h2>
@@ -104,9 +67,7 @@ export default function CartPage() {
         ) : (
           <div className="cart-layout">
             <div className="cart-items">
-              {items.map(item => {
-                
-                // استخدام الدالة الذكية
+              {cart.map(item => {
                 const itemImgSrc = getSmartImageSrc(item.image);
 
                 return (
@@ -115,7 +76,7 @@ export default function CartPage() {
                       <img 
                         src={itemImgSrc} 
                         alt={item.name} 
-                        onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=Image+Not+Found'; }}
+                        onError={(e) => { e.target.src = 'https://placehold.co/150x150/e2e8f0/64748b?text=Image+Not+Found'; }}
                       />
                     </div>
                     
@@ -124,11 +85,11 @@ export default function CartPage() {
                       <p className="cart-item-seller">Seller: {item.seller || 'IndusConnect Official'}</p>
                       <div className="cart-item-controls">
                         <div className="qty-controls">
-                          <button onClick={() => updateQty(item.id, -1)}>−</button>
+                          <button onClick={() => handleQtyChange(item.id, item.quantity, -1)}>−</button>
                           <span>{item.quantity || 1}</span>
-                          <button onClick={() => updateQty(item.id, 1)}>+</button>
+                          <button onClick={() => handleQtyChange(item.id, item.quantity, 1)}>+</button>
                         </div>
-                        <button className="remove-btn" onClick={() => remove(item.id)}>
+                        <button className="remove-btn" onClick={() => handleRemove(item.id)}>
                           Remove
                         </button>
                       </div>
@@ -145,7 +106,7 @@ export default function CartPage() {
             <div className="cart-summary">
               <h3>Order Summary</h3>
               <div className="summary-line">
-                <span>Subtotal ({items.reduce((s, i) => s + (Number(i.quantity) || 0), 0)} items)</span>
+                <span>Subtotal ({cart.reduce((s, i) => s + (Number(i.quantity) || 0), 0)} items)</span>
                 <span>EGP {subtotal.toLocaleString()}</span>
               </div>
               <div className="summary-line">
@@ -153,7 +114,7 @@ export default function CartPage() {
                 <span>EGP {shipping}</span>
               </div>
               <div className="summary-line">
-                <span>Tax (5%)</span>
+                <span>Tax (14%)</span>
                 <span>EGP {tax.toLocaleString()}</span>
               </div>
               <div className="summary-total">
@@ -163,7 +124,7 @@ export default function CartPage() {
               
               <button 
                 className="btn-primary checkout-btn" 
-                onClick={handleCheckout} // 🛠️ ربط الزرار بالدالة الجديدة
+                onClick={handleCheckout}
               >
                 Proceed to Checkout
               </button>

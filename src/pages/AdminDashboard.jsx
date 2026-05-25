@@ -4,34 +4,16 @@ import {
   LayoutDashboard, Box, Bell, Users, 
   CheckCircle2, Clock, XCircle, Search,
   ArrowRight, Plus, Image as ImageIcon,
-  Pencil, Trash2
+  Pencil, Trash2, Check, X
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { DEFAULT_PRODUCTS } from './Services'; 
+import { productsAPI } from '../api/products';
+import { client } from '../api/client';
 import './AdminDashboard.css';
 import logo from '../assets/logo.svg';
 import Footer from '../components/Footer'; 
 
 const DEFAULT_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect width='300' height='300' fill='%23e2e8f0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='18' fill='%2364748b'%3ENo Image%3C/text%3E%3C/svg%3E";
-
-const USERS_DATA = [
-  { id: '5122', name: 'Laila Hassan', email: 'lailahassan6@gmail.com', date: 'Mar 22, 2026', status: 'Buyer', img: 'https://i.pravatar.cc/150?u=5122' },
-  { id: '5123', name: 'Omar Ahmed', email: 'omarahmed00@gmail.com', date: 'Mar 25, 2026', status: 'Buyer', img: 'https://i.pravatar.cc/150?u=5123' },
-  { id: '5124', name: 'Hla Osama', email: 'hlaosama41@gmail.com', date: 'Mar 28, 2026', status: 'Supplier', img: 'https://i.pravatar.cc/150?u=5124' },
-  { id: '5125', name: 'Nahla Abdallah', email: 'nahalabdallah60@gmail.com', date: 'Mar 30, 2026', status: 'Supplier', img: 'https://i.pravatar.cc/150?u=5125' },
-  { id: '5126', name: 'Nesreen Osman', email: 'nesreenosman23@gmail.com', date: 'Apr 1, 2026', status: 'Buyer', img: 'https://i.pravatar.cc/150?u=5126' },
-  { id: '5127', name: 'Anas Ibrahim', email: 'anasibrahim56@gmail.com', date: 'Apr 3, 2026', status: 'Supplier', img: 'https://i.pravatar.cc/150?u=5127' },
-];
-
-const chartData = [
-  { name: '2', supplier: 500, buyer: 480 }, { name: '4', supplier: 900, buyer: 620 },
-  { name: '6', supplier: 850, buyer: 780 }, { name: '8', supplier: 650, buyer: 750 },
-  { name: '10', supplier: 720, buyer: 630 }, { name: '12', supplier: 880, buyer: 920 },
-  { name: '14', supplier: 820, buyer: 750 }, { name: '16', supplier: 780, buyer: 720 },
-  { name: '18', supplier: 850, buyer: 680 }, { name: '20', supplier: 820, buyer: 740 },
-  { name: '22', supplier: 890, buyer: 820 }, { name: '24', supplier: 830, buyer: 910 },
-  { name: '26', supplier: 880, buyer: 820 }, { name: '28', supplier: 800, buyer: 780 }
-];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -41,38 +23,110 @@ export default function AdminDashboard() {
   const [productSearch, setProductSearch] = useState('');
   const itemsPerPage = 6;
 
-  const [products, setProducts] = useState(() => {
-    try {
-      const saved = localStorage.getItem('indus_products');
-      return saved ? JSON.parse(saved) : (DEFAULT_PRODUCTS || []);
-    } catch (e) {
-      return DEFAULT_PRODUCTS || [];
-    }
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalProducts: 0,
+    approvedProducts: 0,
+    pendingProducts: 0,
+    rejectedProducts: 0,
+    totalOrders: 0,
+    totalSales: 0
   });
+
+  const [users, setUsers] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [chartData, setChartData] = useState([]);
+  
+  const [loading, setLoading] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
   const [newProdData, setNewProdData] = useState({
-    name: '', price: '', moq: '', category: 'Furniture', status: 'Approved', description: '', image: ''
+    name: '', price: '', moq: '', category: 'Furniture', status: 'Approved', description: '', image: '', imageFile: null
   });
 
   const [selectedProductIds, setSelectedProductIds] = useState([]);
 
-  useEffect(() => {
+  // Fetch Dashboard Stats & Charts
+  const fetchStatsAndChart = async () => {
     try {
-      const productsToSave = products.map(p => ({
-        ...p,
-        image: p.image && (p.image.startsWith('http') || p.image.startsWith('data:')) ? p.image : DEFAULT_IMG
-      }));
-      localStorage.setItem('indus_products', JSON.stringify(productsToSave));
-      window.dispatchEvent(new Event('storage')); 
+      const statsRes = await client.get('/api/admin/stats');
+      setStats(statsRes);
+      
+      const chartRes = await client.get('/api/admin/chart-data');
+      setChartData(chartRes);
     } catch (error) {
-      console.error("Local Storage is full!", error);
-      // تحذير في حالة نادرة جداً لو الذاكرة اتملت رغم الضغط
-      alert("⚠️ مساحة الذاكرة ممتلئة. يرجى مسح الذاكرة باستخدام localStorage.clear()");
+      console.error('Failed loading stats:', error);
     }
-  }, [products]);
+  };
+
+  // Fetch Users
+  const fetchUsers = async () => {
+    try {
+      const usersRes = await client.get(`/api/admin/users?search=${userSearch}`);
+      setUsers(usersRes);
+    } catch (error) {
+      console.error('Failed loading users:', error);
+    }
+  };
+
+  // Fetch Products
+  const fetchProducts = async () => {
+    try {
+      const productsRes = await productsAPI.getAdminProducts();
+      setProducts(productsRes);
+    } catch (error) {
+      console.error('Failed loading products:', error);
+    }
+  };
+
+  const handleUpdateProductStatus = async (e, id, newStatus) => {
+    e.stopPropagation();
+    try {
+      await productsAPI.updateProductStatus(id, newStatus);
+      alert(`Product status updated to ${newStatus}!`);
+      fetchProducts();
+      fetchStatsAndChart();
+    } catch (err) {
+      alert('Failed updating product status: ' + err.message);
+    }
+  };
+
+  const handleUpdateUserRole = async (userId, newRole) => {
+    try {
+      await client.put(`/api/admin/users/${userId}/role`, { role: newRole });
+      alert(`User role updated to ${newRole.charAt(0).toUpperCase() + newRole.slice(1)} successfully!`);
+      fetchUsers();
+      fetchStatsAndChart();
+    } catch (err) {
+      alert('Failed updating user role: ' + err.message);
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (window.confirm("Are you sure you want to permanently delete this user? All their orders, cart items, and RFQs will also be deleted!")) {
+      try {
+        await client.delete(`/api/admin/users/${userId}`);
+        alert('User deleted successfully!');
+        fetchUsers();
+        fetchStatsAndChart();
+      } catch (err) {
+        alert('Failed deleting user: ' + err.message);
+      }
+    }
+  };
+
+  // Tab change triggers
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
+      fetchStatsAndChart();
+    } else if (activeTab === 'users') {
+      fetchUsers();
+    } else if (activeTab === 'products') {
+      fetchProducts();
+    }
+  }, [activeTab, userSearch]);
 
   const filteredProducts = products.filter(p => {
     const pName = p?.name || '';
@@ -84,12 +138,8 @@ export default function AdminDashboard() {
   const currentProductsList = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const totalProductPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
-  const filteredUsers = USERS_DATA.filter(u => 
-    (u?.name || '').toLowerCase().includes((userSearch || '').toLowerCase()) || 
-    (u?.id || '').includes(userSearch)
-  );
-  const currentUsersList = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const totalUserPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const totalUserPages = Math.ceil(users.length / itemsPerPage);
+  const currentUsersList = users.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleSelectAllProducts = (e) => {
     if (e.target.checked) setSelectedProductIds(currentProductsList.map(p => p.id));
@@ -101,51 +151,27 @@ export default function AdminDashboard() {
     setSelectedProductIds(prev => prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]);
   };
 
-  // 🛠️ الحل السحري: ضغط الصورة (Compress) في الخلفية لتقليل حجمها قبل حفظها
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 400; // أقصى عرض
-          const MAX_HEIGHT = 400; // أقصى طول
-          let width = img.width;
-          let height = img.height;
-
-          // تصغير الأبعاد مع الحفاظ على نسبة العرض للطول
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // تحويل الصورة لـ jpeg بجودة 70% لتقليل الحجم بشكل كبير
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-          setNewProdData(prev => ({ ...prev, image: compressedBase64 }));
-        };
-        img.src = event.target.result;
-      };
-      reader.readAsDataURL(file);
+      setNewProdData(prev => ({
+        ...prev,
+        imageFile: file,
+        image: URL.createObjectURL(file) // preview url
+      }));
     }
   };
 
-  const handleDeleteProduct = (e, id) => {
+  const handleDeleteProduct = async (e, id) => {
     e.stopPropagation();
     if (window.confirm("Delete this product permanently from system?")) {
-      setProducts(prev => prev.filter(p => p.id !== id));
+      try {
+        await productsAPI.deleteProduct(id);
+        alert('Product deleted successfully!');
+        fetchProducts();
+      } catch (err) {
+        alert('Failed deleting product: ' + err.message);
+      }
     }
   };
 
@@ -153,6 +179,11 @@ export default function AdminDashboard() {
     e.stopPropagation();
     setIsEditMode(true);
     setEditingProductId(prod.id);
+    
+    const imageSrc = prod.image && (prod.image.startsWith('data:') || prod.image.startsWith('http') || prod.image.startsWith('/uploads/'))
+      ? prod.image
+      : `${import.meta.env.BASE_URL || '/'}${prod.image}`;
+
     setNewProdData({
       name: prod?.name || '',
       price: prod?.price || '',
@@ -160,65 +191,58 @@ export default function AdminDashboard() {
       category: prod?.category || 'Furniture',
       status: prod?.status || 'Approved',
       description: prod?.description || '',
-      image: prod?.image || ''
+      image: imageSrc,
+      imageFile: null
     });
     setIsModalOpen(true);
   };
 
-  const handleSaveProduct = (e) => {
+  const handleSaveProduct = async (e) => {
     e.preventDefault();
     if (!newProdData.name || !newProdData.price) return;
 
-    const finalImageUrl = newProdData.image || DEFAULT_IMG;
-
-    let updatedProductsList = [];
-    if (isEditMode) {
-      updatedProductsList = products.map(p => p.id === editingProductId ? {
-        ...p,
+    try {
+      const payload = {
         name: newProdData.name,
-        price: Number(newProdData.price) || 0,
-        unitPrice: `${newProdData.price}EGP`,
-        category: newProdData.category || 'Furniture',
-        status: newProdData.status || 'Approved',
-        description: newProdData.description || '',
-        image: finalImageUrl,
-        moq: newProdData.moq ? (String(newProdData.moq).includes('Unit') ? newProdData.moq : `${newProdData.moq} Unit`) : '10 Unit'
-      } : p);
-    } else {
-      const createdProduct = {
-        id: Number(Date.now().toString().slice(-6)), 
-        name: newProdData.name,
-        price: Number(newProdData.price) || 0,
-        unitPrice: `${newProdData.price}EGP`,
-        category: newProdData.category || 'Furniture',
-        rating: 5,
-        reviews: 1,
-        viewedCount: '10+',
-        image: finalImageUrl,
-        description: newProdData.description || 'No description provided.',
+        price: newProdData.price,
+        category: newProdData.category,
+        description: newProdData.description,
         moq: newProdData.moq ? `${newProdData.moq} Unit` : '10 Unit',
-        status: newProdData.status || 'Approved'
+        unitPrice: `${newProdData.price}EGP`,
+        status: newProdData.status
       };
-      updatedProductsList = [createdProduct, ...products];
-    }
 
-    setProducts(updatedProductsList);
-    setIsModalOpen(false);
-    setIsEditMode(false);
-    setNewProdData({ name: '', price: '', moq: '', category: 'Furniture', status: 'Approved', description: '', image: '' });
+      if (newProdData.imageFile) {
+        payload.imageFile = newProdData.imageFile;
+      }
+
+      if (isEditMode) {
+        await productsAPI.updateProduct(editingProductId, payload);
+        alert('Product updated successfully!');
+      } else {
+        await productsAPI.createProduct(payload);
+        alert('Product created successfully!');
+      }
+
+      setIsModalOpen(false);
+      setIsEditMode(false);
+      setNewProdData({ name: '', price: '', moq: '', category: 'Furniture', status: 'Approved', description: '', image: '', imageFile: null });
+      fetchProducts();
+    } catch (err) {
+      alert('Failed saving product: ' + err.message);
+    }
   };
 
   return (
     <div className="admin-wrapper">
       
       <div className="admin-dashboard-container">
-          <div className="admin-logo-section">
-            <img src={logo} alt="IndusConnect" className="admin-logo-img" />
-          </div>
+        <div className="admin-logo-section">
+          <img src={logo} alt="IndusConnect" className="admin-logo-img" style={{ height: '35px', objectFit: 'contain' }} />
+        </div>
+        
         {/* Sidebar Component */}
         <aside className="admin-sidebar">
-          
-          
           <nav className="admin-nav-menu">
             <div 
               className={`admin-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
@@ -249,7 +273,10 @@ export default function AdminDashboard() {
             <button className="admin-icon-btn">
               <Bell size={20}/>
             </button>
-            <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=150" alt="Admin" className="admin-profile-img" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#4B5563' }}>Admin Panel</span>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#c24438', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold' }}>AD</div>
+            </div>
           </header>
 
           <div className="admin-page-title-section">
@@ -264,32 +291,33 @@ export default function AdminDashboard() {
           {activeTab === 'dashboard' && (
             <>
               <div className="admin-stats-grid">
-                <StatCard label="Total Users" val="1250" icon={<Users size={20} color="#C24133"/>} />
-                <StatCard label="Products Approved" val={products.filter(p=>p?.status==='Approved').length} icon={<CheckCircle2 size={20} color="#10B981"/>} />
-                <StatCard label="Products Pending" val={products.filter(p=>p?.status==='Pending').length} icon={<Clock size={20} color="#F59E0B"/>} />
-                <StatCard label="Products Rejected" val={products.filter(p=>p?.status==='Rejected').length} icon={<XCircle size={20} color="#EF4444"/>} />
+                <StatCard label="Total Users" val={stats.totalUsers} icon={<Users size={20} color="#C24133"/>} />
+                <StatCard label="Products Approved" val={stats.approvedProducts} icon={<CheckCircle2 size={20} color="#10B981"/>} />
+                <StatCard label="Products Pending" val={stats.pendingProducts} icon={<Clock size={20} color="#F59E0B"/>} />
+                <StatCard label="Total Sales (EGP)" val={stats.totalSales.toLocaleString()} icon={<XCircle size={20} color="#EF4444"/>} />
               </div>
 
               <div className="admin-chart-panel">
                 <div className="admin-chart-header">
-                  <h3>User Growth</h3>
+                  <h3>User Growth Dynamics</h3>
                   <div className="admin-chart-legend">
                     <span><div className="legend-dot green"></div> Supplier</span>
                     <span><div className="legend-dot red"></div> Buyer</span>
                   </div>
                 </div>
-                {/* 🛠️ حل تحذير Recharts بضبط الحاويات بشكل دقيق */}
                 <div className="admin-chart-container" style={{ width: '100%', height: 300, minHeight: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%" minHeight={300} minWidth={100}>
-                    <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
-                      <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
-                      <Area type="monotone" dataKey="supplier" stroke="#10B981" fillOpacity={0.05} fill="#10B981" strokeWidth={2} />
-                      <Area type="monotone" dataKey="buyer" stroke="#C24133" fillOpacity={0.05} fill="#C24133" strokeWidth={2} />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {chartData.length > 0 && (
+                    <ResponsiveContainer width="100%" height="100%" minHeight={300}>
+                      <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
+                        <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
+                        <Area type="monotone" dataKey="supplier" stroke="#10B981" fillOpacity={0.05} fill="#10B981" strokeWidth={2} />
+                        <Area type="monotone" dataKey="buyer" stroke="#C24133" fillOpacity={0.05} fill="#C24133" strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             </>
@@ -305,7 +333,7 @@ export default function AdminDashboard() {
                 <input 
                   type="text" 
                   className="admin-search-input"
-                  placeholder="Search" 
+                  placeholder="Search registered users..." 
                   value={userSearch} 
                   onChange={(e) => { setUserSearch(e.target.value); setCurrentPage(1); }} 
                 />
@@ -317,14 +345,15 @@ export default function AdminDashboard() {
                     <th>Full Name</th>
                     <th>Id</th>
                     <th>Registration date</th>
-                    <th>Status</th>
+                    <th>Role / Status</th>
+                    <th className="actions-col">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {currentUsersList.map((user) => (
+                  {currentUsersList.length > 0 ? currentUsersList.map((user) => (
                     <tr key={user.id}>
                       <td className="user-info-cell">
-                        <img src={user.img} alt="" className="user-avatar" />
+                        <img src={user.img} alt="" className="user-avatar" onError={(e)=>{e.target.src='https://i.pravatar.cc/150?u='+user.id}} />
                         <div className="user-details">
                           <span className="user-name">{user.name}</span>
                           <span className="user-email">{user.email}</span>
@@ -333,15 +362,34 @@ export default function AdminDashboard() {
                       <td className="user-id-cell">{user.id}</td>
                       <td className="user-date-cell">{user.date}</td>
                       <td>
-                        <span className={`admin-status-badge ${user.status.toLowerCase()}`}>
-                          {user.status}
-                        </span>
+                        <select 
+                          className="admin-role-select"
+                          value={user.status.toLowerCase()} 
+                          onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
+                        >
+                          <option value="buyer">Buyer</option>
+                          <option value="supplier">Supplier</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </td>
+                      <td className="actions-col">
+                        <div className="action-buttons">
+                          <button 
+                            onClick={() => handleDeleteUser(user.id)} 
+                            className="delete-btn" 
+                            title="Delete User"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  )) : (
+                    <tr><td colSpan="5" style={{ textAlign: 'center', padding: '30px' }}>No users found.</td></tr>
+                  )}
                 </tbody>
               </table>
-              <Pagination totalPages={totalUserPages} current={currentPage} setPage={setCurrentPage} />
+              {totalUserPages > 1 && <Pagination totalPages={totalUserPages} current={currentPage} setPage={setCurrentPage} />}
             </div>
           )}
 
@@ -376,7 +424,7 @@ export default function AdminDashboard() {
 
                 <button 
                   className="admin-btn-primary"
-                  onClick={() => { setIsEditMode(false); setNewProdData({ name: '', price: '', moq: '', category: 'Furniture', status: 'Approved', description: '', image: '' }); setIsModalOpen(true); }} 
+                  onClick={() => { setIsEditMode(false); setNewProdData({ name: '', price: '', moq: '', category: 'Furniture', status: 'Approved', description: '', image: '', imageFile: null }); setIsModalOpen(true); }} 
                 >
                   <Plus size={16}/> Add Product
                 </button>
@@ -395,9 +443,9 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody>
                   {currentProductsList.length > 0 ? currentProductsList.map((prod) => {
-                    const imageSrc = prod?.image && (prod.image.startsWith('data:') || prod.image.startsWith('http'))
+                    const imageSrc = prod?.image && (prod.image.startsWith('data:') || prod.image.startsWith('http') || prod.image.startsWith('/uploads/'))
                       ? prod.image
-                      : `${import.meta.env.BASE_URL}${(prod?.image || '').replace(/^\//, '')}`;
+                      : `${import.meta.env.BASE_URL || '/'}${(prod?.image || '').replace(/^\//, '')}`;
 
                     return (
                       <tr key={prod.id}>
@@ -406,7 +454,10 @@ export default function AdminDashboard() {
                         </td>
                         <td className="product-info-cell">
                           <img src={imageSrc} alt="" className="product-img" onError={(e)=>{e.target.src=DEFAULT_IMG}}/>
-                          {prod?.name || 'Unnamed Product'}
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 'bold' }}>{prod?.name || 'Unnamed Product'}</span>
+                            <span style={{ fontSize: '11px', color: '#9ca3af' }}>Supplier: {prod.supplier_name || 'Official'}</span>
+                          </div>
                         </td>
                         <td className="product-price-cell">
                           <span className="price-val">{Number(prod?.price || 0).toLocaleString()}</span> <span className="currency">EGP</span>
@@ -414,13 +465,19 @@ export default function AdminDashboard() {
                         <td className="product-qty-cell">
                           <span className="qty-val">{prod?.moq ? String(prod.moq).replace(/\D/g,'') : '10'}</span> <span className="unit">Unit</span>
                         </td>
-                        <td>
+                         <td>
                           <span className={`admin-prod-status ${prod?.status?.toLowerCase() || 'approved'}`}>
                             {prod?.status || 'Approved'} {prod?.status === 'Approved' && '✓'}
                           </span>
                         </td>
                         <td className="actions-col">
                           <div className="action-buttons">
+                            {prod?.status !== 'Approved' && (
+                              <button onClick={(e) => handleUpdateProductStatus(e, prod.id, 'Approved')} className="approve-btn" title="Approve Product"><Check size={18} /></button>
+                            )}
+                            {prod?.status !== 'Rejected' && (
+                              <button onClick={(e) => handleUpdateProductStatus(e, prod.id, 'Rejected')} className="reject-btn" title="Reject Product"><X size={18} /></button>
+                            )}
                             <button onClick={(e) => handleOpenEditModal(e, prod)} title="Edit"><Pencil size={18} /></button>
                             <button onClick={(e) => handleDeleteProduct(e, prod.id)} className="delete-btn" title="Delete"><Trash2 size={18} /></button>
                           </div>
@@ -429,13 +486,13 @@ export default function AdminDashboard() {
                     );
                   }) : (
                     <tr>
-                      <td colSpan="6" className="no-data">No products found.</td>
+                      <td colSpan="6" className="no-data" style={{ textAlign: 'center', padding: '30px' }}>No products found.</td>
                     </tr>
                   )}
                 </tbody>
               </table>
 
-              <Pagination totalPages={totalProductPages} current={currentPage} setPage={setCurrentPage} />
+              {totalProductPages > 1 && <Pagination totalPages={totalProductPages} current={currentPage} setPage={setCurrentPage} />}
             </div>
           )}
 
@@ -457,12 +514,12 @@ export default function AdminDashboard() {
             <form onSubmit={handleSaveProduct}>
               <div className="admin-form-group">
                 <label>Product Image</label>
-                <div className="admin-image-upload-area">
+                <div className="admin-image-upload-area" onClick={() => document.getElementById('admin-file-picker').click()} style={{ cursor: 'pointer' }}>
                   {newProdData.image ? 
                     <img src={newProdData.image} alt="" className="uploaded-img" /> : 
                     <div className="upload-placeholder"><ImageIcon size={32} /><span>Click to upload image</span></div>
                   }
-                  <input type="file" accept="image/*" onChange={handleImageChange} className="file-input" />
+                  <input type="file" id="admin-file-picker" accept="image/*" onChange={handleImageChange} className="file-input" style={{ display: 'none' }} />
                 </div>
               </div>
               <div className="admin-form-group">

@@ -8,24 +8,12 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as BarTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Tooltip as PieTooltip
 } from 'recharts';
+import { productsAPI } from '../api/products';
+import { ordersAPI } from '../api/orders';
+import { rfqAPI } from '../api/rfq';
 import './SupplierDashboard.css';
 import logo from '../assets/logo.svg';
 import Footer from '../components/Footer';
-import { DEFAULT_PRODUCTS } from './Services';
-
-// ==========================================
-// MOCK DATA 
-// ==========================================
-const RFQ_ORDERS_DATA = [
-  { id: '#1052', name: 'Laila Hassan', date: 'Mar 22, 2026', price: 1000, qty: 12, status: 'Confirm', img: 'https://i.pravatar.cc/150?u=5122' },
-  { id: '#1051', name: 'Omar Ahmed', date: 'Mar 22, 2026', price: 700, qty: 20, status: 'Pending', img: 'https://i.pravatar.cc/150?u=5123' },
-  { id: '#1050', name: 'Hla Osama', date: 'Mar 22, 2026', price: 100, qty: 500, status: 'Pending', img: 'https://i.pravatar.cc/150?u=5124' }
-];
-
-const ORDERS_DATA = [
-  { id: '#2052', name: 'Laila Hassan', date: 'Mar 22, 2026', price: 1000, qty: 12, status: 'Delivered', img: 'https://i.pravatar.cc/150?u=5122' },
-  { id: '#2051', name: 'Omar Ahmed', date: 'Mar 22, 2026', price: 700, qty: 20, status: 'On Way', img: 'https://i.pravatar.cc/150?u=5123' }
-];
 
 const SALES_DATA = [
   { name: 'JAN', sales: 1800 }, { name: 'FEB', sales: 2900 },
@@ -41,178 +29,156 @@ const ORDER_STATUS_DATA = [
 
 const DEFAULT_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect width='300' height='300' fill='%23e2e8f0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='18' fill='%2364748b'%3ENo Image%3C/text%3E%3C/svg%3E";
 
-// ==========================================
-// COMPONENT
-// ==========================================
 export default function SupplierDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currentPage, setCurrentPage] = useState(1);
+  const [productSearch, setProductSearch] = useState('');
   
-  const [supplierProducts, setSupplierProducts] = useState(() => {
-    try {
-      const saved = localStorage.getItem('supplier_my_products');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [supplierProducts, setSupplierProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [rfqs, setRfqs] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
   
   const [newProduct, setNewProduct] = useState({ 
-    name: '', category: '', price: '', quantity: '', status: 'Approved' 
+    name: '', category: '', price: '', quantity: '', status: 'Approved', image: '', imageFile: null
   });
-  const [previewImage, setPreviewImage] = useState(null);
+  
   const fileInputRef = useRef(null);
 
-  // 🛠️ حماية حفظ الـ Storage
-  useEffect(() => {
+  // Load products
+  const fetchSupplierProducts = async () => {
     try {
-      localStorage.setItem('supplier_my_products', JSON.stringify(supplierProducts));
-    } catch (error) {
-      console.warn("Storage is full", error);
-    }
-  }, [supplierProducts]);
-
-  const syncToGlobalProducts = (action, productData, id = null) => {
-    try {
-      let saved = localStorage.getItem('indus_products');
-      let globalProducts = saved ? JSON.parse(saved) : null;
-      
-      if (!globalProducts || !Array.isArray(globalProducts) || globalProducts.length === 0) {
-        globalProducts = DEFAULT_PRODUCTS || [];
-      }
-      
-      if (action === 'ADD') {
-        globalProducts = [productData, ...globalProducts];
-      } else if (action === 'EDIT') {
-        globalProducts = globalProducts.map(p => p.id === id ? { ...p, ...productData } : p);
-      } else if (action === 'DELETE') {
-        globalProducts = globalProducts.filter(p => p.id !== id);
-      }
-      
-      localStorage.setItem('indus_products', JSON.stringify(globalProducts));
-      window.dispatchEvent(new Event('storage'));
-    } catch (error) {
-      console.error("Sync error:", error);
+      const data = await productsAPI.getSupplierProducts();
+      setSupplierProducts(data);
+    } catch (err) {
+      console.error('Failed fetching supplier products:', err);
     }
   };
+
+  // Load orders
+  const fetchSupplierOrders = async () => {
+    try {
+      const data = await ordersAPI.getOrders();
+      setOrders(data);
+    } catch (err) {
+      console.error('Failed fetching supplier orders:', err);
+    }
+  };
+
+  // Load RFQs
+  const fetchIncomingRfqs = async () => {
+    try {
+      const data = await rfqAPI.getRFQs();
+      setRfqs(data);
+    } catch (err) {
+      console.error('Failed fetching RFQs:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'products') {
+      fetchSupplierProducts();
+    } else if (activeTab === 'orders') {
+      fetchSupplierOrders();
+    } else if (activeTab === 'rfq') {
+      fetchIncomingRfqs();
+    } else if (activeTab === 'dashboard') {
+      fetchSupplierProducts();
+    }
+  }, [activeTab]);
 
   const handleProductInputChange = (e) => {
     const { name, value } = e.target;
     setNewProduct(prev => ({ ...prev, [name]: value }));
   };
 
-  // 🛠️ التعديل الأهم: ضغط الصورة (Auto-Compression) لتفادي انهيار الذاكرة تماماً
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_DIMENSION = 400; // تصغير الأبعاد
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_DIMENSION) { height *= MAX_DIMENSION / width; width = MAX_DIMENSION; }
-        } else {
-          if (height > MAX_DIMENSION) { width *= MAX_DIMENSION / height; height = MAX_DIMENSION; }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // ضغط الصورة بجودة 70%
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-        setPreviewImage(compressedBase64);
-      };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
+    if (file) {
+      setNewProduct(prev => ({
+        ...prev,
+        imageFile: file,
+        image: URL.createObjectURL(file)
+      }));
+    }
   };
 
   const handleOpenEditModal = (e, prod) => {
     e.stopPropagation();
     setIsEditMode(true);
     setEditingProductId(prod.id);
+    
+    const imageSrc = prod.image && (prod.image.startsWith('data:') || prod.image.startsWith('http') || prod.image.startsWith('/uploads/'))
+      ? prod.image
+      : `${import.meta.env.BASE_URL || '/'}${prod.image}`;
+
     setNewProduct({
       name: prod.name,
       category: prod.category,
       price: prod.price,
-      quantity: prod.quantity || String(prod.moq).replace(/\D/g,''),
-      status: prod.status || 'Approved'
+      quantity: prod.moq ? String(prod.moq).replace(/\D/g,'') : '10',
+      status: prod.status || 'Approved',
+      image: imageSrc,
+      imageFile: null
     });
-    setPreviewImage(prod.img || prod.image);
     setIsModalOpen(true);
   };
 
-  const handleDeleteProduct = (e, id) => {
+  const handleDeleteProduct = async (e, id) => {
     e.stopPropagation();
     if (window.confirm("Are you sure you want to delete this product?")) {
-      setSupplierProducts(prev => prev.filter(p => p.id !== id));
-      syncToGlobalProducts('DELETE', null, id);
+      try {
+        await productsAPI.deleteProduct(id);
+        alert('Product deleted successfully!');
+        fetchSupplierProducts();
+      } catch (err) {
+        alert('Failed to delete product: ' + err.message);
+      }
     }
   };
 
-  const handleSaveProduct = (e) => {
+  const handleSaveProduct = async (e) => {
     e.preventDefault();
     
-    // استخدام الصورة المضغوطة أو الـ Placeholder
-    const finalImageUrl = previewImage || DEFAULT_IMG;
-
-    if (isEditMode) {
-      const updatedData = {
+    try {
+      const payload = {
         name: newProduct.name,
         category: newProduct.category,
-        price: Number(newProduct.price),
-        unitPrice: `${newProduct.price}EGP`,
-        quantity: Number(newProduct.quantity),
-        moq: `${newProduct.quantity} Unit`,
-        status: newProduct.status, 
-        img: finalImageUrl,
-        image: finalImageUrl,
-        description: 'Product updated by Supplier.'
+        price: newProduct.price,
+        description: 'Supplier listed catalog item.',
+        moq: newProduct.quantity ? `${newProduct.quantity} Unit` : '10 Unit',
+        unitPrice: `${newProduct.price}EGP`
       };
 
-      setSupplierProducts(prev => prev.map(p => p.id === editingProductId ? { ...p, ...updatedData } : p));
-      syncToGlobalProducts('EDIT', updatedData, editingProductId);
+      if (newProduct.imageFile) {
+        payload.imageFile = newProduct.imageFile;
+      }
 
-    } else {
-      const productToAdd = {
-        id: Number(Date.now().toString().slice(-6)),
-        name: newProduct.name,
-        category: newProduct.category,
-        price: Number(newProduct.price),
-        unitPrice: `${newProduct.price}EGP`,
-        quantity: Number(newProduct.quantity),
-        moq: `${newProduct.quantity} Unit`,
-        status: 'Approved', 
-        img: finalImageUrl,
-        image: finalImageUrl,
-        description: 'New product added by Supplier.',
-        rating: 5,
-        reviews: 0, 
-        viewedCount: '0+', 
-        supplierId: 'current_user_id', 
-      };
-
-      setSupplierProducts([productToAdd, ...supplierProducts]);
-      syncToGlobalProducts('ADD', productToAdd);
+      if (isEditMode) {
+        await productsAPI.updateProduct(editingProductId, payload);
+        alert('Product updated successfully!');
+      } else {
+        await productsAPI.createProduct(payload);
+        alert('Product listed successfully for Admin approval!');
+      }
+      
+      setIsModalOpen(false);
+      setIsEditMode(false);
+      setNewProduct({ name: '', category: '', price: '', quantity: '', status: 'Approved', image: '', imageFile: null });
+      fetchSupplierProducts();
+    } catch (err) {
+      alert('Failed listing product: ' + err.message);
     }
-    
-    setIsModalOpen(false);
-    setIsEditMode(false);
-    setNewProduct({ name: '', category: '', price: '', quantity: '', status: 'Approved' });
-    setPreviewImage(null);
   };
+
+  const filteredProducts = supplierProducts.filter(p => 
+    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+    p.category.toLowerCase().includes(productSearch.toLowerCase())
+  );
 
   const renderPagination = () => (
     <div className="pagination-wrapper">
@@ -245,7 +211,10 @@ export default function SupplierDashboard() {
         <main className="main-content">
           <header className="top-header">
             <button className="icon-btn"><Bell size={20}/></button>
-            <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=150" alt="Supplier" className="profile-img" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#4B5563' }}>Supplier Panel</span>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#c24438', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold' }}>SP</div>
+            </div>
           </header>
 
           <div className="page-title-section">
@@ -258,46 +227,48 @@ export default function SupplierDashboard() {
 
           {activeTab === 'dashboard' && (
              <>
-               <div className="stats-grid">
-                 <div className="stat-card"><div><p>My Products</p><h2>{supplierProducts.length}</h2></div><div className="stat-icon"><Users size={20} color="#C24133"/></div></div>
-                 <div className="stat-card"><div><p>Buyers</p><h2>86</h2></div><div className="stat-icon"><CheckCircle2 size={20} color="#10B981"/></div></div>
-                 <div className="stat-card"><div><p>Orders</p><h2>245</h2></div><div className="stat-icon"><Clock size={20} color="#F59E0B"/></div></div>
-                 <div className="stat-card"><div><p>Sales</p><h2>48,750</h2></div><div className="stat-icon"><XCircle size={20} color="#EF4444"/></div></div>
-               </div>
-               <div className="card-panel mt-30">
-                 <div className="panel-header"><h3>Sales dynamics</h3><div className="year-selector">2023 <span className="arrow-down">▼</span></div></div>
-                 {/* 🛠️ حل تحذير الـ BarChart بإضافة أبعاد دنيا صريحة */}
-                 <div className="chart-container" style={{ height: '280px', width: '100%' }}>
-                   <ResponsiveContainer width="100%" height="100%" minHeight={280} minWidth={100}>
-                     <BarChart data={SALES_DATA} margin={{ top: 20, right: 0, left: -20, bottom: 0 }} barSize={12}>
-                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#6B7280', fontWeight: 'bold' }} dy={10} />
-                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#6B7280' }} />
-                       <BarTooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}/>
-                       <Bar dataKey="sales" fill="#E0E7FF" radius={[10, 10, 10, 10]} />
-                       <Bar dataKey="sales" fill="#3B82F6" radius={[10, 10, 10, 10]} style={{ transform: 'scaleY(0.7)', transformOrigin: 'bottom' }}/>
-                     </BarChart>
-                   </ResponsiveContainer>
-                 </div>
-               </div>
+                <div className="stats-grid">
+                  <div className="stat-card"><div><p>My Products</p><h2>{supplierProducts.length}</h2></div><div className="stat-icon"><Box size={20} color="#C24133"/></div></div>
+                  <div className="stat-card"><div><p>Pending Review</p><h2>{supplierProducts.filter(p=>p.status==='Pending').length}</h2></div><div className="stat-icon"><Clock size={20} color="#F59E0B"/></div></div>
+                  <div className="stat-card"><div><p>Active Orders</p><h2>12</h2></div><div className="stat-icon"><CheckCircle2 size={20} color="#10B981"/></div></div>
+                  <div className="stat-card"><div><p>Estimated Sales</p><h2>24,500</h2></div><div className="stat-icon"><SlidersHorizontal size={20} color="#EF4444"/></div></div>
+                </div>
+                <div className="card-panel mt-30">
+                  <div className="panel-header"><h3>Sales dynamics</h3><div className="year-selector">2026 <span className="arrow-down">▼</span></div></div>
+                  <div className="chart-container" style={{ width: '100%' }}>
+                    <ResponsiveContainer width="99%" height={280}>
+                      <BarChart data={SALES_DATA} margin={{ top: 20, right: 0, left: -20, bottom: 0 }} barSize={12}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#6B7280', fontWeight: 'bold' }} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#6B7280' }} />
+                        <BarTooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}/>
+                        <Bar dataKey="sales" fill="#E0E7FF" radius={[10, 10, 10, 10]} />
+                        <Bar dataKey="sales" fill="#3B82F6" radius={[10, 10, 10, 10]} style={{ transform: 'scaleY(0.7)', transformOrigin: 'bottom' }}/>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
              </>
           )}
 
           {activeTab === 'products' && (
             <div className="card-panel p-0">
               <div className="panel-header-actions">
-                <div className="search-box"><Search size={16} className="search-icon" /><input type="text" placeholder="Search my products..." /></div>
-                <button className="btn-primary" onClick={() => { setIsEditMode(false); setNewProduct({ name: '', category: '', price: '', quantity: '', status: 'Approved' }); setPreviewImage(null); setIsModalOpen(true); }}>
+                <div className="search-box">
+                  <Search size={16} className="search-icon" />
+                  <input type="text" placeholder="Search my products..." value={productSearch} onChange={e=>setProductSearch(e.target.value)} />
+                </div>
+                <button className="btn-primary" onClick={() => { setIsEditMode(false); setNewProduct({ name: '', category: '', price: '', quantity: '', status: 'Approved', image: '', imageFile: null }); setIsModalOpen(true); }}>
                   <Plus size={16}/> Add New Product
                 </button>
               </div>
               <table className="data-table">
                 <thead><tr><th>Product Name ↕</th><th>Category</th><th>Price ↕</th><th>Quantity</th><th>Status</th><th style={{ textAlign: 'center' }}>Actions</th></tr></thead>
                 <tbody>
-                  {supplierProducts.length > 0 ? supplierProducts.map((item) => {
-                    const imageSrc = item.img && (item.img.startsWith('data:') || item.img.startsWith('http'))
-                      ? item.img
-                      : `${import.meta.env.BASE_URL}${(item.img || item.image || '').replace(/^\//, '')}`;
+                  {filteredProducts.length > 0 ? filteredProducts.map((item) => {
+                    const imageSrc = item.image && (item.image.startsWith('data:') || item.image.startsWith('http') || item.image.startsWith('/uploads/'))
+                      ? item.image
+                      : `${import.meta.env.BASE_URL || '/'}${(item.image || '').replace(/^\//, '')}`;
 
                     return (
                       <tr key={item.id}>
@@ -315,7 +286,7 @@ export default function SupplierDashboard() {
                         </td>
                         <td className="text-red">{item.category}</td>
                         <td className="fw-bold"><span className="text-red">{item.price}</span> <span className="text-muted">EGP</span></td>
-                        <td className="fw-bold"><span className="text-red">{item.quantity || String(item.moq).replace(/\D/g,'')}</span> <span className="text-muted">Unit</span></td>
+                        <td className="fw-bold"><span className="text-red">{item.moq ? String(item.moq).replace(/\D/g,'') : '10'}</span> <span className="text-muted">Unit</span></td>
                         <td><span className={`status-badge ${item.status?.toLowerCase() || 'approved'}`}>{item.status} {item.status === 'Approved' && '✓'}</span></td>
                         <td style={{ textAlign: 'center' }}>
                           <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
@@ -328,63 +299,76 @@ export default function SupplierDashboard() {
                   }) : (<tr><td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>You haven't added any products yet.</td></tr>)}
                 </tbody>
               </table>
-              {supplierProducts.length > 0 && renderPagination()}
+              {filteredProducts.length > 0 && renderPagination()}
             </div>
           )}
 
           {activeTab === 'rfq' && (
             <div className="card-panel p-0">
               <table className="data-table">
-                <thead><tr><th>Id ↕</th><th>Buyer ↕</th><th>Date ↕</th><th>Price ↕</th><th>Quantity</th><th>Action</th></tr></thead>
+                <thead><tr><th>Id ↕</th><th>Buyer ↕</th><th>Needed By ↕</th><th>Product ↕</th><th>Quantity</th><th>Budget</th></tr></thead>
                 <tbody>
-                  {RFQ_ORDERS_DATA.map((item) => (
+                  {rfqs.length > 0 ? rfqs.map((item) => (
                     <tr key={item.id}>
-                      <td className="fw-bold text-red">{item.id}</td>
-                      <td><div className="cell-flex"><img src={item.img} alt="" className="avatar-img" /><span className="fw-bold text-dark">{item.name}</span></div></td>
-                      <td className="text-dark">{item.date}</td>
-                      <td className="fw-bold"><span className="text-red">{item.price}</span> <span className="text-muted">EGP</span></td>
-                      <td className="fw-bold"><span className="text-red">{item.qty}</span> <span className="text-muted">Unit</span></td>
-                      <td><span className={`status-badge ${item.status.toLowerCase()}`}>{item.status} {item.status === 'Confirm' && '✓'}</span></td>
+                      <td className="fw-bold text-red">#{item.id}</td>
+                      <td>
+                        <div className="cell-flex">
+                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#c24438', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>BY</div>
+                          <span className="fw-bold text-dark">{item.buyer_name}</span>
+                        </div>
+                      </td>
+                      <td className="text-dark">{item.date_needed}</td>
+                      <td className="fw-bold text-dark">{item.product}</td>
+                      <td className="fw-bold"><span className="text-red">{item.quantity}</span> <span className="text-muted">Unit</span></td>
+                      <td className="fw-bold"><span className="text-red">{item.budget ? item.budget.toLocaleString() : 'N/A'}</span> <span className="text-muted">EGP</span></td>
                     </tr>
-                  ))}
+                  )) : (
+                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '30px' }}>No active RFQ requests listed.</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
           )}
 
           {activeTab === 'orders' && (
-             <>
-               <div className="card-panel">
-                 <h3 className="chart-title">Order Status</h3>
-                 <div className="donut-chart-wrapper">
-                   {/* 🛠️ حل تحذير الـ PieChart بإضافة أبعاد صريحة */}
-                   <div className="donut-chart" style={{ width: '220px', height: '220px' }}>
-                     <ResponsiveContainer width="100%" height="100%" minHeight={220} minWidth={220}>
-                       <PieChart><Pie data={ORDER_STATUS_DATA} innerRadius={65} outerRadius={90} paddingAngle={2} dataKey="value" stroke="none">{ORDER_STATUS_DATA.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}</Pie><PieTooltip /></PieChart>
-                     </ResponsiveContainer>
-                     <div className="donut-center-text"><h2>2563</h2><p>Reservation</p></div>
-                   </div>
-                   <div className="donut-legend">{ORDER_STATUS_DATA.map((item, index) => (<div className="legend-item" key={index}><span className="legend-dot" style={{ backgroundColor: item.color }}></span><span className="fw-bold text-dark">201</span> <span className="text-muted">{item.name}</span></div>))}</div>
-                 </div>
-               </div>
-               <div className="card-panel p-0 mt-30">
-                 <table className="data-table">
-                   <thead><tr><th>Buyer ↕</th><th>Date ↕</th><th>Price ↕</th><th>Quantity</th><th>Status</th></tr></thead>
-                   <tbody>
-                     {ORDERS_DATA.map((item, index) => (
-                       <tr key={index}>
-                         <td><div className="cell-flex"><img src={item.img} alt="" className="avatar-img" /><span className="fw-bold text-dark">{item.name}</span></div></td>
-                         <td className="text-dark">{item.date}</td>
-                         <td className="fw-bold"><span className="text-red">{item.price}</span> <span className="text-muted">EGP</span></td>
-                         <td className="fw-bold"><span className="text-red">{item.qty}</span> <span className="text-muted">Unit</span></td>
-                         <td><span className={`status-badge ${item.status.toLowerCase().replace(' ', '-')}`}>{item.status} {item.status === 'Delivered' && '✓'}</span></td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </div>
-             </>
-          )}
+              <>
+                <div className="card-panel">
+                  <h3 className="chart-title">Order Status</h3>
+                  <div className="donut-chart-wrapper">
+                    <div className="donut-chart" style={{ width: '220px' }}>
+                      <ResponsiveContainer width="99%" height={220}>
+                        <PieChart><Pie data={ORDER_STATUS_DATA} innerRadius={65} outerRadius={90} paddingAngle={2} dataKey="value" stroke="none">{ORDER_STATUS_DATA.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}</Pie><PieTooltip /></PieChart>
+                      </ResponsiveContainer>
+                      <div className="donut-center-text"><h2>{orders.length}</h2><p>Orders</p></div>
+                    </div>
+                    <div className="donut-legend">{ORDER_STATUS_DATA.map((item, index) => (<div className="legend-item" key={index}><span className="legend-dot" style={{ backgroundColor: item.color }}></span><span className="fw-bold text-dark">{Math.round(orders.length * item.value / 80)}</span> <span className="text-muted">{item.name}</span></div>))}</div>
+                  </div>
+                </div>
+                <div className="card-panel p-0 mt-30">
+                  <table className="data-table">
+                    <thead><tr><th>Buyer ↕</th><th>Date ↕</th><th>Price ↕</th><th>Quantity</th><th>Status</th></tr></thead>
+                    <tbody>
+                      {orders.length > 0 ? orders.map((item, index) => (
+                        <tr key={index}>
+                          <td>
+                            <div className="cell-flex">
+                              <img src={item.img} alt="" className="avatar-img" onError={(e)=>{e.target.src='https://i.pravatar.cc/150?u=buyer'+index}} />
+                              <span className="fw-bold text-dark">{item.name}</span>
+                            </div>
+                          </td>
+                          <td className="text-dark">{item.date}</td>
+                          <td className="fw-bold"><span className="text-red">{item.price.toLocaleString()}</span> <span className="text-muted">EGP</span></td>
+                          <td className="fw-bold"><span className="text-red">{item.qty}</span> <span className="text-muted">Unit</span></td>
+                          <td><span className={`status-badge ${item.status.toLowerCase().replace(' ', '-')}`}>{item.status} {item.status === 'Delivered' && '✓'}</span></td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '30px' }}>No buyer orders received for your catalog yet.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+           )}
         </main>
       </div>
 
@@ -402,7 +386,7 @@ export default function SupplierDashboard() {
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>Product Image</label>
                 <div onClick={() => fileInputRef.current.click()} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '140px', border: '2px dashed #d1d5db', borderRadius: '12px', cursor: 'pointer', position: 'relative', backgroundColor: '#f9fafb', overflow: 'hidden' }}>
-                  {previewImage ? <img src={previewImage} alt="Preview" style={{ height: '100%', width: '100%', objectFit: 'contain', backgroundColor: '#fff' }} /> : <div style={{ color: '#9CA3AF', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}><ImageIcon size={32} /><span style={{fontSize:'12px', fontWeight:'500'}}>Click to upload image</span></div>}
+                  {newProduct.image ? <img src={newProduct.image} alt="Preview" style={{ height: '100%', width: '100%', objectFit: 'contain', backgroundColor: '#fff' }} /> : <div style={{ color: '#9CA3AF', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}><ImageIcon size={32} /><span style={{fontSize:'12px', fontWeight:'500'}}>Click to upload image</span></div>}
                   <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} style={{ display: 'none' }} />
                 </div>
               </div>

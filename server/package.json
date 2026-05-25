@@ -1,0 +1,20 @@
+{
+  "name": "indusconnect-server",
+  "version": "1.0.0",
+  "description": "IndusConnect B2B Marketplace Backend API",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "node-sqlite3-wasm": "^0.8.57",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.1"
+  }
+}

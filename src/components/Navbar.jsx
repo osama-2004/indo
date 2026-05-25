@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useCart, useAuth } from '../App';
 import './Navbar.css';
 import logo from '../assets/logo.svg';
 
-// ==========================================
-// SVG ICONS
-// ==========================================
 const DashboardIcon = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -43,14 +41,14 @@ const MenuIcon = () => (
   </svg>
 )
 
-// ==========================================
-// NAVBAR COMPONENT
-// ==========================================
 export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
+  
+  const { cart } = useCart();
+  const { user, isLoggedIn, logout } = useAuth();
 
   const topSearches = ["Package", "Textile", "Lighting", "Industrial suppliers", "Manufacture", "Ready to produce", "Raw Materials"];
 
@@ -71,6 +69,14 @@ export function Navbar() {
 
   const closeMenu = () => setMenuOpen(false);
 
+  const handleSignOut = () => {
+    logout();
+    closeMenu();
+    navigate('/login');
+  };
+
+  const totalCartCount = cart.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+
   return (
     <>
       <header className="navbar transparent-nav">
@@ -88,10 +94,17 @@ export function Navbar() {
 
           <div className="nav-right">
             
-            {/* Any Dashboard Link in Header */}
-            <Link to="/admin" className="nav-icon-btn admin-icon" title="Admin Dashboard">
-              <DashboardIcon />
-            </Link>
+            {isLoggedIn && user?.role === 'admin' && (
+              <Link to="/admin" className="nav-icon-btn admin-icon" title="Admin Dashboard">
+                <DashboardIcon />
+              </Link>
+            )}
+
+            {isLoggedIn && user?.role === 'supplier' && (
+              <Link to="/supplier" className="nav-icon-btn admin-icon" title="Supplier Dashboard">
+                <DashboardIcon />
+              </Link>
+            )}
             
             <button className="nav-icon-btn" onClick={() => setSearchOpen(true)} title="Search">
               <SearchIcon />
@@ -107,31 +120,44 @@ export function Navbar() {
 
             <Link to="/cart" className="nav-icon-btn nav-cart-btn" title="Cart">
               <CartIcon />
-              <span className="cart-badge">3</span>
+              {totalCartCount > 0 && <span className="cart-badge">{totalCartCount}</span>}
             </Link>
           </div>
 
         </div>
 
-        {/* المنيو الجانبية */}
+        {/* Side Mobile Menu */}
         {menuOpen && (
           <div className="nav-mobile-menu">
             <nav>
               <Link to="/" onClick={closeMenu}>Home</Link>
-              <Link to="/admin" onClick={closeMenu}>Admin Dashboard</Link>
-              {/* 🛠️ الرابط الجديد للوحة تحكم المورد */}
-              <Link to="/supplier" onClick={closeMenu}>Supplier Dashboard</Link>
-              <Link to="/services" onClick={closeMenu}>Products</Link>
+              <Link to="/services" onClick={closeMenu}>Products Catalog</Link>
               <Link to="/favorites" onClick={closeMenu}>My Wishlist ❤️</Link>
-              <Link to="/rfq" onClick={closeMenu}>RFQ</Link>
-              <Link to="/login" onClick={closeMenu}>Log In</Link>
-              <Link to="/complaint" onClick={closeMenu}>Complaint</Link>
+              <Link to="/rfq" onClick={closeMenu}>RFQ Panel</Link>
+              <Link to="/complaint" onClick={closeMenu}>Add Complaint</Link>
+              
+              {isLoggedIn ? (
+                <>
+                  <div className="nav-divider" style={{ height: '1px', backgroundColor: '#eee', margin: '10px 0' }}></div>
+                  <span style={{ padding: '8px 25px', fontSize: '13px', color: '#999', textTransform: 'capitalize' }}>Logged in as: {user.username} ({user.role})</span>
+                  {user.role === 'admin' && <Link to="/admin" onClick={closeMenu}>Admin Dashboard 🛠️</Link>}
+                  {user.role === 'supplier' && <Link to="/supplier" onClick={closeMenu}>Supplier Dashboard 📦</Link>}
+                  <Link to="/profile" onClick={closeMenu}>My Account Profile 👤</Link>
+                  <a href="#/login" onClick={handleSignOut} style={{ color: '#EF4444' }}>Sign Out 🚪</a>
+                </>
+              ) : (
+                <>
+                  <div className="nav-divider" style={{ height: '1px', backgroundColor: '#eee', margin: '10px 0' }}></div>
+                  <Link to="/login" onClick={closeMenu}>Log In</Link>
+                  <Link to="/signup" onClick={closeMenu}>Sign Up</Link>
+                </>
+              )}
             </nav>
           </div>
         )}
       </header>
 
-      {/* نافذة البحث المنبثقة */}
+      {/* Search Modal overlay */}
       {searchOpen && (
         <div className="search-overlay" onClick={() => setSearchOpen(false)}>
           <div className="search-modal" onClick={e => e.stopPropagation()}>

@@ -1,7 +1,10 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { authAPI } from './api/auth'
+import { cartAPI } from './api/cart'
+import { favoritesAPI } from './api/favorites'
 
-// pages import
+// Pages import
 import { Navbar } from './components/Navbar' 
 import { ForgotPassword } from './pages/ForgotPassword' 
 import Footer from './components/Footer'
@@ -20,33 +23,133 @@ import Profile from './pages/Profile'
 import Favorites from './pages/Favorites'
 
 // ==========================================
-// 1. FAVORITES GLOBAL CONTEXT PROVIDER
+// 1. AUTH GLOBAL CONTEXT
+// ==========================================
+const AuthContext = createContext();
+
+export function AuthProvider({ children }) {
+  const [token, setToken] = useState(() => localStorage.getItem('indus_token') || null);
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('indus_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const isLoggedIn = !!token;
+
+  useEffect(() => {
+    const syncAuth = () => {
+      setToken(localStorage.getItem('indus_token') || null);
+      try {
+        const stored = localStorage.getItem('indus_user');
+        setUser(stored ? JSON.parse(stored) : null);
+      } catch {
+        setUser(null);
+      }
+    };
+
+    window.addEventListener('authChanged', syncAuth);
+    return () => window.removeEventListener('authChanged', syncAuth);
+  }, []);
+
+  const login = async (username, password) => {
+    return await authAPI.login(username, password);
+  };
+
+  const signup = async (userData) => {
+    return await authAPI.register(userData);
+  };
+
+  const socialLogin = async (socialData) => {
+    return await authAPI.socialLogin(socialData);
+  };
+
+  const logout = () => {
+    authAPI.logout();
+  };
+
+  const refreshUser = async () => {
+    if (token) {
+      try {
+        const freshUser = await authAPI.getProfile();
+        localStorage.setItem('indus_user', JSON.stringify(freshUser));
+        setUser(freshUser);
+      } catch (err) {
+        console.error('Failed to refresh user profile:', err);
+      }
+    }
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, token, isLoggedIn, login, signup, socialLogin, logout, refreshUser }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  return useContext(AuthContext);
+}
+
+// ==========================================
+// 2. FAVORITES GLOBAL CONTEXT PROVIDER
 // ==========================================
 const FavoritesContext = createContext();
 
 export function FavoritesProvider({ children }) {
-  const [favorites, setFavorites] = useState(() => {
-    try {
-      const saved = localStorage.getItem('indus_favorites');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const { isLoggedIn } = useAuth();
+  const [favorites, setFavorites] = useState([]);
 
+  // Fetch favorites from API when user logs in
   useEffect(() => {
-    try {
-      localStorage.setItem('indus_favorites', JSON.stringify(favorites));
-    } catch (e) {
-      console.error("Storage full, resetting favorites");
-      setFavorites([]);
-    }
-  }, [favorites]);
+    const fetchFavorites = async () => {
+      if (isLoggedIn) {
+        try {
+          const list = await favoritesAPI.getFavorites();
+          setFavorites(list.map(p => p.id));
+        } catch (err) {
+          console.error('Error fetching favorites:', err);
+        }
+      } else {
+        // Retrieve from localStorage if anonymous
+        try {
+          const saved = localStorage.getItem('indus_favorites');
+          setFavorites(saved ? JSON.parse(saved) : []);
+        } catch {
+          setFavorites([]);
+        }
+      }
+    };
 
-  const toggleFavorite = (product) => {
-    setFavorites(prev => {
-      return prev.includes(product.id) ? prev.filter(id => id !== product.id) : [...prev, product.id];
-    });
+    fetchFavorites();
+    window.addEventListener('authChanged', fetchFavorites);
+    return () => window.removeEventListener('authChanged', fetchFavorites);
+  }, [isLoggedIn]);
+
+  const toggleFavorite = async (product) => {
+    const productId = product.id;
+    if (isLoggedIn) {
+      try {
+        const res = await favoritesAPI.toggleFavorite(productId);
+        if (res.isFavorite) {
+          setFavorites(prev => [...prev, productId]);
+        } else {
+          setFavorites(prev => prev.filter(id => id !== productId));
+        }
+      } catch (err) {
+        console.error('Error toggling favorite on server:', err);
+      }
+    } else {
+      // Offline/Local Storage toggle
+      setFavorites(prev => {
+        const next = prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId];
+        localStorage.setItem('indus_favorites', JSON.stringify(next));
+        return next;
+      });
+    }
   };
 
   const isFavorite = (productId) => favorites.includes(productId);
@@ -63,53 +166,123 @@ export function useFavorites() {
 }
 
 // ==========================================
-// 2. SHOPPING CART GLOBAL CONTEXT PROVIDER
+// 3. SHOPPING CART GLOBAL CONTEXT PROVIDER
 // ==========================================
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-  const [cart, setCart] = useState(() => {
-    try {
-      const savedCart = localStorage.getItem('indus_cart');
-      return savedCart ? JSON.parse(savedCart) : [];
-    } catch (e) {
-      return [];
+  const { isLoggedIn } = useAuth();
+  const [cart, setCart] = useState([]);
+
+  const fetchCart = async () => {
+    if (isLoggedIn) {
+      try {
+        const items = await cartAPI.getCart();
+        setCart(items);
+      } catch (err) {
+        console.error('Error fetching cart:', err);
+      }
+    } else {
+      // Anonymous local storage
+      try {
+        const savedCart = localStorage.getItem('indus_cart') || localStorage.getItem('cart');
+        setCart(savedCart ? JSON.parse(savedCart) : []);
+      } catch {
+        setCart([]);
+      }
     }
-  });
+  };
 
   useEffect(() => {
-    localStorage.setItem('indus_cart', JSON.stringify(cart));
-  }, [cart]);
+    fetchCart();
+    window.addEventListener('authChanged', fetchCart);
+    window.addEventListener('cartUpdated', fetchCart);
+    return () => {
+      window.removeEventListener('authChanged', fetchCart);
+      window.removeEventListener('cartUpdated', fetchCart);
+    };
+  }, [isLoggedIn]);
 
-  const addToCart = (product) => {
-    setCart(prevCart => {
-      const existingItem = prevCart.find(item => item.id === product.id);
-      if (existingItem) {
-        return prevCart.map(item => 
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
+  const addToCart = async (product, quantity = 1) => {
+    if (isLoggedIn) {
+      try {
+        const updatedItems = await cartAPI.addToCart(product.id, quantity);
+        setCart(updatedItems);
+      } catch (err) {
+        console.error('Error adding to cart on server:', err);
       }
-      return [...prevCart, { ...product, quantity: 1 }];
-    });
+    } else {
+      setCart(prevCart => {
+        const existingItem = prevCart.find(item => item.id === product.id);
+        let nextCart;
+        if (existingItem) {
+          nextCart = prevCart.map(item => 
+            item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
+          );
+        } else {
+          nextCart = [...prevCart, { ...product, quantity }];
+        }
+        localStorage.setItem('indus_cart', JSON.stringify(nextCart));
+        localStorage.setItem('cart', JSON.stringify(nextCart));
+        return nextCart;
+      });
+    }
   };
 
-  const removeFromCart = (productId) => {
-    setCart(prevCart => prevCart.filter(item => item.id !== productId));
+  const removeFromCart = async (productId) => {
+    if (isLoggedIn) {
+      try {
+        const updatedItems = await cartAPI.removeCartItem(productId);
+        setCart(updatedItems);
+      } catch (err) {
+        console.error('Error removing from cart on server:', err);
+      }
+    } else {
+      setCart(prevCart => {
+        const nextCart = prevCart.filter(item => item.id !== productId);
+        localStorage.setItem('indus_cart', JSON.stringify(nextCart));
+        localStorage.setItem('cart', JSON.stringify(nextCart));
+        return nextCart;
+      });
+    }
   };
 
-  const updateQuantity = (productId, newQuantity) => {
+  const updateQuantity = async (productId, newQuantity) => {
     if (newQuantity < 1) return;
-    setCart(prevCart => 
-      prevCart.map(item => item.id === productId ? { ...item, quantity: newQuantity } : item
-    ));
+    if (isLoggedIn) {
+      try {
+        const updatedItems = await cartAPI.updateCartItem(productId, newQuantity);
+        setCart(updatedItems);
+      } catch (err) {
+        console.error('Error updating quantity on server:', err);
+      }
+    } else {
+      setCart(prevCart => {
+        const nextCart = prevCart.map(item => item.id === productId ? { ...item, quantity: newQuantity } : item);
+        localStorage.setItem('indus_cart', JSON.stringify(nextCart));
+        localStorage.setItem('cart', JSON.stringify(nextCart));
+        return nextCart;
+      });
+    }
   };
 
-  const clearCart = () => {
-    setCart([]);
+  const clearCart = async () => {
+    if (isLoggedIn) {
+      try {
+        await cartAPI.clearCart();
+        setCart([]);
+      } catch (err) {
+        console.error('Error clearing cart on server:', err);
+      }
+    } else {
+      setCart([]);
+      localStorage.removeItem('indus_cart');
+      localStorage.removeItem('cart');
+    }
   };
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, refreshCart: fetchCart }}>
       {children}
     </CartContext.Provider>
   );
@@ -120,132 +293,113 @@ export function useCart() {
 }
 
 // ==========================================
-// 3. ADMIN PROTECTED ROUTE COMPONENT
+// 4. ROLE PROTECTED ROUTE COMPONENTS
 // ==========================================
 function AdminProtectedRoute({ children }) {
-  const [password, setPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('admin_logged_in') === 'true');
-  const [error, setError] = useState('');
+  const { user, isLoggedIn } = useAuth();
 
-  // لو مسجل دخول، اعرض الداشبورد على طول
-  if (isAuthenticated) {
-    return children;
+  if (!isLoggedIn) {
+    return <Navigate to="/login" replace />;
   }
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    
-    // 🔐 الباسورد بتاع الأدمن هنا (تقدر تغيره براحتك من هنا)
-    if (password === 'admin123') {
-      localStorage.setItem('admin_logged_in', 'true');
-      setIsAuthenticated(true);
-    } else {
-      setError('Invalid Password!');
-    }
-  };
-
-  // لو مش مسجل دخول، اعرض شاشة الباسورد
-  return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#F4F4F5' }}>
-      <div style={{ backgroundColor: '#fff', padding: '40px', borderRadius: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', width: '350px', textAlign: 'center' }}>
-        <h2 style={{ color: '#111827', marginBottom: '10px', fontSize: '24px' }}>Admin Access</h2>
-        <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '25px' }}>Please enter the admin password</p>
-        
-        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <input 
-            type="password" 
-            value={password} 
-            onChange={(e) => { setPassword(e.target.value); setError(''); }} 
-            placeholder="Password..." 
-            style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${error ? '#EF4444' : '#D1D5DB'}`, outline: 'none', width: '100%', boxSizing: 'border-box' }}
-            autoFocus
-          />
-          {error && <span style={{ color: '#EF4444', fontSize: '13px', fontWeight: 'bold' }}>{error}</span>}
-          <button type="submit" style={{ padding: '12px', backgroundColor: '#C24133', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'background-color 0.2s' }}>
-            Login to Dashboard
+  if (user?.role !== 'admin') {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#F4F4F5' }}>
+        <div style={{ backgroundColor: '#fff', padding: '40px', borderRadius: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', width: '380px', textAlign: 'center' }}>
+          <h2 style={{ color: '#EF4444', marginBottom: '10px', fontSize: '24px' }}>Access Denied</h2>
+          <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '25px' }}>Only Administrators are authorized to view this page.</p>
+          <button onClick={() => window.location.href = '#/home'} style={{ padding: '12px 24px', backgroundColor: '#C24133', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+            Go Home
           </button>
-        </form>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  return children;
+}
+
+function SupplierProtectedRoute({ children }) {
+  const { user, isLoggedIn } = useAuth();
+
+  if (!isLoggedIn) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user?.role !== 'supplier' && user?.role !== 'admin') {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#F4F4F5' }}>
+        <div style={{ backgroundColor: '#fff', padding: '40px', borderRadius: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', width: '380px', textAlign: 'center' }}>
+          <h2 style={{ color: '#EF4444', marginBottom: '10px', fontSize: '24px' }}>Access Denied</h2>
+          <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '25px' }}>Only Suppliers are authorized to view this page.</p>
+          <button onClick={() => window.location.href = '#/home'} style={{ padding: '12px 24px', backgroundColor: '#C24133', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return children;
 }
 
 // ==========================================
-// 4. MAIN APP ROOT COMPONENT WITH ROUTING
+// 5. MAIN APP ROOT COMPONENT WITH ROUTING
 // ==========================================
 function App() {
-  const [isAuth, setIsAuth] = useState(() => {
-    try {
-      return localStorage.getItem('isLoggedIn') === 'true';
-    } catch (e) {
-      return false;
-    }
-  });
-
-  useEffect(() => {
-    const handleAuthSync = () => {
-      try {
-        setIsAuth(localStorage.getItem('isLoggedIn') === 'true');
-      } catch (e) {
-        setIsAuth(false);
-      }
-    };
-    window.addEventListener('storage', handleAuthSync);
-    const interval = setInterval(handleAuthSync, 500);
-
-    return () => {
-      window.removeEventListener('storage', handleAuthSync);
-      clearInterval(interval);
-    };
-  }, []);
+  const { isLoggedIn } = useAuth();
 
   return (
-    <FavoritesProvider>
-      <CartProvider> 
-        <HashRouter>
-          <Routes>
-            <Route path="/" element={<Navigate to="/home" replace />} />
-            
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
+    <HashRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
-            {/* 🛠️ تم تغليف لوحة الأدمن بحارس الباسورد الجديد */}
-            <Route path="/admin" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
-            
-            {/* لوحة المورد لسه مفتوحة مؤقتاً للاختبار، لو عايز تقفلها ممكن نعملها حارس مشابه */}
-            <Route path="/supplier" element={<SupplierDashboard />} />
-            
-            <Route path="/*" element={
-              <div className="app-layout">
-                <Navbar />
-                <main>
-                  <Routes>
-                    <Route path="/home" element={<Home />} />
-                    <Route path="/services" element={<Services />} />
-                    <Route path="/services/:id" element={<ServiceDetail />} />
-                    <Route path="/favorites" element={<Favorites />} />
-                    <Route path="/cart" element={<Cart />} />
-                    
-                    <Route 
-                      path="/checkout" 
-                      element={localStorage.getItem('isLoggedIn') === 'true' ? <Checkout /> : <Navigate to="/login" replace />} 
-                    />
-                    
-                    <Route path="/rfq" element={<RFQ />} />
-                    <Route path="/complaint" element={<Complaint />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="*" element={<Navigate to="/home" replace />} />
-                  </Routes>
-                </main>
-                <Footer />
-              </div>
-            } />
-          </Routes>
-        </HashRouter>
-      </CartProvider>
-    </FavoritesProvider>
+        {/* Protected Dashboard Routes */}
+        <Route path="/admin" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
+        <Route path="/supplier" element={<SupplierProtectedRoute><SupplierDashboard /></SupplierProtectedRoute>} />
+        
+        <Route path="/*" element={
+          <div className="app-layout">
+            <Navbar />
+            <main>
+              <Routes>
+                <Route path="/home" element={<Home />} />
+                <Route path="/services" element={<Services />} />
+                <Route path="/services/:id" element={<ServiceDetail />} />
+                <Route path="/favorites" element={<Favorites />} />
+                <Route path="/cart" element={<Cart />} />
+                
+                <Route 
+                  path="/checkout" 
+                  element={isLoggedIn ? <Checkout /> : <Navigate to="/login" replace />} 
+                />
+                
+                <Route path="/rfq" element={<RFQ />} />
+                <Route path="/complaint" element={<Complaint />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="*" element={<Navigate to="/home" replace />} />
+              </Routes>
+            </main>
+            <Footer />
+          </div>
+        } />
+      </Routes>
+    </HashRouter>
   )
 }
 
-export default App;
+export default function Root() {
+  return (
+    <AuthProvider>
+      <FavoritesProvider>
+        <CartProvider>
+          <App />
+        </CartProvider>
+      </FavoritesProvider>
+    </AuthProvider>
+  );
+}

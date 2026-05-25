@@ -1,117 +1,145 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useFavorites, useCart } from '../App'; 
+import { useFavorites, useCart, useAuth } from '../App'; 
+import { authAPI } from '../api/auth';
+import { favoritesAPI } from '../api/favorites';
+import { ordersAPI } from '../api/orders';
 import './Profile.css'
-import { DEFAULT_PRODUCTS } from './Services'; // 🛠️ استخدمنا الداتا الحقيقية بدل الثابتة
 
-// ==========================================
-// USER PROFILE COMPONENT
-// ==========================================
 export default function Profile() {
   const [activeTab, setActiveTab] = useState('wishlist');
   const navigate = useNavigate();
   const fileInputRef = useRef(null); 
   
-  // استدعاء الهوكس العالمية للمفضلة والسلة
   const { toggleFavorite, isFavorite } = useFavorites();
   const { addToCart } = useCart(); 
-  
-  // 🛠️ جلب كل المنتجات (الافتراضية + اللي ضافها المورد/الأدمن) عشان الـ Wishlist تبقى ديناميكية
-  const [globalProducts, setGlobalProducts] = useState(() => {
-    try {
-      const saved = localStorage.getItem('indus_products');
-      return saved ? JSON.parse(saved) : DEFAULT_PRODUCTS;
-    } catch (e) {
-      return DEFAULT_PRODUCTS;
-    }
-  });
+  const { user, logout, refreshUser } = useAuth();
 
-  // قراءة بيانات البروفايل
-  const [user, setUser] = useState(() => {
-    try {
-      const savedUser = localStorage.getItem('indus_user_profile');
-      return savedUser ? JSON.parse(savedUser) : {
-        name: 'Osama Al-korashy',
-        email: 'osamaalkorashy28@gmail.com',
-        phone: '+20 100 123 4567',
-        image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=150'
-      };
-    } catch (e) {
-      return {
-        name: 'Osama Al-korashy',
-        email: 'osamaalkorashy28@gmail.com',
-        phone: '+20 100 123 4567',
-        image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=150'
-      };
-    }
-  });
+  const [wishlistProducts, setWishlistProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loadingWishlist, setLoadingWishlist] = useState(false);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editedUser, setEditedUser] = useState({ ...user });
+  const [editedUser, setEditedUser] = useState({ name: '', email: '', phone: '' });
+  const [updatingProfile, setUpdatingProfile] = useState(false);
 
-  // 🛠️ ربط المفضلة بالمنتجات الحقيقية
-  const wishlistProducts = globalProducts.filter(product => isFavorite(product.id));
+  useEffect(() => {
+    if (user) {
+      setEditedUser({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || ''
+      });
+    }
+  }, [user]);
 
-  // 🛠️ التعديل الأهم: ضغط الصورة الشخصية قبل حفظها لمنع انهيار الذاكرة
-  const handleImageUpload = (e) => {
+  // Load wishlist
+  const loadWishlist = async () => {
+    setLoadingWishlist(true);
+    try {
+      const data = await favoritesAPI.getFavorites();
+      setWishlistProducts(data);
+    } catch (err) {
+      console.error('Failed loading wishlist:', err);
+    } finally {
+      setLoadingWishlist(false);
+    }
+  };
+
+  // Load orders
+  const loadOrders = async () => {
+    setLoadingOrders(true);
+    try {
+      const data = await ordersAPI.getOrders();
+      setOrders(data);
+    } catch (err) {
+      console.error('Failed loading orders:', err);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'wishlist') {
+      loadWishlist();
+    } else if (activeTab === 'orders') {
+      loadOrders();
+    }
+  }, [activeTab]);
+
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_DIMENSION = 200; // أبعاد صغيرة ومناسبة لصورة البروفايل
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_DIMENSION) { height *= MAX_DIMENSION / width; width = MAX_DIMENSION; }
-        } else {
-          if (height > MAX_DIMENSION) { width *= MAX_DIMENSION / height; height = MAX_DIMENSION; }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // ضغط الصورة وحفظها
-        const compressedImage = canvas.toDataURL('image/jpeg', 0.7);
-        
-        setUser(prev => {
-          const updatedUser = { ...prev, image: compressedImage };
-          try {
-            localStorage.setItem('indus_user_profile', JSON.stringify(updatedUser)); 
-          } catch (error) {
-            console.warn("Storage Full during profile save.");
-          }
-          return updatedUser;
-        });
-        setEditedUser(prev => ({ ...prev, image: compressedImage }));
-      };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // دالة حفظ التعديلات
-  const handleSaveProfile = () => {
-    setUser(editedUser);
-    setIsEditingProfile(false);
     try {
-      localStorage.setItem('indus_user_profile', JSON.stringify(editedUser)); 
-    } catch (error) {
-      console.warn("Storage Full");
+      await authAPI.uploadAvatar(file);
+      await refreshUser();
+      alert('Avatar uploaded successfully!');
+    } catch (err) {
+      alert('Error uploading avatar: ' + err.message);
     }
   };
 
-  const handleAddToCart = (e, product) => {
+  const handleSaveProfile = async () => {
+    setUpdatingProfile(true);
+    try {
+      await authAPI.updateProfile({
+        name: editedUser.name,
+        email: editedUser.email,
+        phone: editedUser.phone
+      });
+      await refreshUser();
+      setIsEditingProfile(false);
+      alert('Profile updated successfully!');
+    } catch (err) {
+      alert('Failed to update profile: ' + err.message);
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
+
+  const handleAddToCart = async (e, product) => {
     e.preventDefault(); 
     e.stopPropagation(); 
-    addToCart(product); 
+    try {
+      await addToCart(product, 1);
+      alert(`🛒 ${product.name} added to cart!`);
+    } catch (err) {
+      console.error(err);
+    }
   };
+
+  const handleToggleFavoriteWishlist = async (e, product) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await toggleFavorite(product);
+      // Reload wishlist immediately after toggle
+      setTimeout(loadWishlist, 100);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSignOut = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
+  if (!user) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '80vh', gap: '15px' }}>
+        <h2>Session expired. Please log in first.</h2>
+        <button onClick={() => navigate('/login')} style={{ padding: '10px 20px', backgroundColor: '#C24133', color: '#fff', border: 'none', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold' }}>Log In</button>
+      </div>
+    );
+  }
+
+  // Avatar path helper
+  const avatarSrc = user.avatar && (user.avatar.startsWith('http') || user.avatar.startsWith('data:') || user.avatar.startsWith('/uploads/'))
+    ? user.avatar
+    : 'https://i.pravatar.cc/150?u=' + user.id;
 
   return (
     <div className="account-container">
@@ -125,12 +153,13 @@ export default function Profile() {
               className="user-avatar-wrapper" 
               style={{ position: 'relative', width: '90px', height: '90px', marginBottom: '15px', cursor: 'pointer' }}
               onClick={() => fileInputRef.current.click()}
-              title="تغيير الصورة الشخصية"
+              title="Change Profile Picture"
             >
               <img 
-                src={user.image} 
+                src={avatarSrc} 
                 alt="Profile" 
                 style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '3px solid #E5E7EB' }} 
+                onError={(e)=>{e.target.src='https://i.pravatar.cc/150?u=fallback'}}
               />
               <div style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: '#C24133', color: '#fff', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', border: '2px solid #fff' }}>
                 📷
@@ -150,32 +179,40 @@ export default function Profile() {
                   type="text" 
                   value={editedUser.name} 
                   onChange={(e) => setEditedUser({...editedUser, name: e.target.value})} 
+                  placeholder="Full Name"
+                  disabled={updatingProfile}
                   style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #D1D5DB', textAlign: 'center', fontSize: '14px' }}
                 />
                 <input 
                   type="email" 
                   value={editedUser.email} 
                   onChange={(e) => setEditedUser({...editedUser, email: e.target.value})} 
+                  placeholder="Email"
+                  disabled={updatingProfile}
                   style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #D1D5DB', textAlign: 'center', fontSize: '14px' }}
                 />
                 <input 
                   type="text" 
                   value={editedUser.phone} 
                   onChange={(e) => setEditedUser({...editedUser, phone: e.target.value})} 
+                  placeholder="Phone"
+                  disabled={updatingProfile}
                   style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #D1D5DB', textAlign: 'center', fontSize: '14px' }}
                 />
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '5px' }}>
-                  <button onClick={() => {setIsEditingProfile(false); setEditedUser(user);}} style={{ padding: '6px 12px', borderRadius: '15px', border: '1px solid #D1D5DB', background: '#fff', cursor: 'pointer', fontSize: '12px' }}>Cancel</button>
-                  <button onClick={handleSaveProfile} style={{ padding: '6px 15px', borderRadius: '15px', border: 'none', background: '#C24133', color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>Save</button>
+                  <button onClick={() => {setIsEditingProfile(false); setEditedUser({ name: user.name, email: user.email, phone: user.phone });}} style={{ padding: '6px 12px', borderRadius: '15px', border: '1px solid #D1D5DB', background: '#fff', cursor: 'pointer', fontSize: '12px' }}>Cancel</button>
+                  <button onClick={handleSaveProfile} disabled={updatingProfile} style={{ padding: '6px 15px', borderRadius: '15px', border: 'none', background: '#C24133', color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
+                    {updatingProfile ? 'Saving...' : 'Save'}
+                  </button>
                 </div>
               </div>
             ) : (
               <div className="user-details">
-                <h4 style={{ margin: '0 0 5px 0', color: '#111827' }}>{user.name}</h4>
+                <h4 style={{ margin: '0 0 5px 0', color: '#111827', textTransform: 'capitalize' }}>{user.name}</h4>
                 <p style={{ margin: '0 0 5px 0', fontSize: '13px', color: '#6B7280' }}>{user.email}</p>
-                <p style={{ margin: '0 0 15px 0', fontSize: '13px', color: '#6B7280' }}>{user.phone}</p>
+                <p style={{ margin: '0 0 15px 0', fontSize: '13px', color: '#6B7280' }}>{user.phone || 'No phone number added'}</p>
                 <button 
-                  onClick={() => {setEditedUser(user); setIsEditingProfile(true);}}
+                  onClick={() => {setEditedUser({ name: user.name, email: user.email, phone: user.phone || '' }); setIsEditingProfile(true);}}
                   style={{ backgroundColor: '#F3F4F6', color: '#4B5563', border: 'none', padding: '6px 16px', borderRadius: '15px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}
                 >
                   ✏️ Edit Profile
@@ -217,11 +254,7 @@ export default function Profile() {
             
             <button 
               className="nav-item-btn signout-btn" 
-              onClick={() => {
-                localStorage.clear(); 
-                window.location.hash = '/login'; 
-                window.location.reload(); 
-              }}
+              onClick={handleSignOut}
             >
               <span className="icon">🚪</span> Sign Out
             </button>
@@ -239,13 +272,15 @@ export default function Profile() {
                   <button className="action-btn share-btn" onClick={() => alert('Wishlist link copied!')}>
                     <span>🔄</span> Share
                   </button>
-                  <button className="action-btn edit-btn" onClick={() => alert('Edit Mode enabled.')}>
-                    <span>✏️</span> Edit
+                  <button className="action-btn edit-btn" onClick={() => alert('Refresh wishlist...')}>
+                    <span>✏️</span> Refresh
                   </button>
                 </div>
               </div>
 
-              {wishlistProducts.length === 0 ? (
+              {loadingWishlist ? (
+                <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280', fontSize: '16px' }}>Loading wishlist items...</div>
+              ) : wishlistProducts.length === 0 ? (
                 <div className="empty-wishlist-state">
                   <div className="emoji-box-icon">
                     <div className="yellow-box">
@@ -262,9 +297,8 @@ export default function Profile() {
                   {wishlistProducts.map(product => {
                     const isFav = isFavorite(product.id);
                     
-                    // 🛠️ تظبيط مسار الصور للـ Wishlist بنفس المنطق الآمن
                     const cleanPath = (product.image || '').startsWith('/') ? product.image.substring(1) : product.image;
-                    const imageSrc = product.image && (product.image.startsWith('http') || product.image.startsWith('data:'))
+                    const imageSrc = product.image && (product.image.startsWith('http') || product.image.startsWith('data:') || product.image.startsWith('/uploads/'))
                       ? product.image
                       : `${import.meta.env.BASE_URL || '/'}${cleanPath}`;
 
@@ -274,18 +308,13 @@ export default function Profile() {
                           <img 
                             src={imageSrc} 
                             alt={product.name} 
-                            // 🛠️ استبدال البلايس هولدر برابط آمن
                             onError={(e) => { e.target.src = 'https://placehold.co/300x300/e2e8f0/64748b?text=IndusConnect'; }}
                           />
                           
                           <div className="wish-overlay-buttons">
                             <button 
                               className={`wish-circle-btn ${isFav ? 'active-fav' : ''}`} 
-                              onClick={(e) => { 
-                                e.preventDefault(); 
-                                e.stopPropagation(); 
-                                toggleFavorite(product); 
-                              }}
+                              onClick={(e) => handleToggleFavoriteWishlist(e, product)}
                             >
                               {isFav ? '❤️' : '♡'}
                             </button>
@@ -304,7 +333,7 @@ export default function Profile() {
                           <h3 className="wish-prod-name">{product.name}</h3>
                           <p className="wish-prod-desc">{product.description || 'No description available.'}</p>
                           <div className="wish-prod-meta">
-                            <span>👁️ {product.viewedCount || '10+'} viewed in past week</span>
+                            <span>👁️ {product.viewed_count || product.viewedCount || '10+'} viewed</span>
                             <span className="wish-rating">⭐ {product.rating || 5} <small>({product.reviews || 0})</small></span>
                           </div>
                         </div>
@@ -316,7 +345,7 @@ export default function Profile() {
                           </div>
                           <div className="wish-footer-col w-highlight">
                             <span className="w-lbl">Unit Price</span>
-                            <span className="w-val">{product.unitPrice || `${product.price}EGP`}</span>
+                            <span className="w-val">{product.unit_price || product.unitPrice || `${product.price} EGP`}</span>
                           </div>
                         </div>
                       </Link>
@@ -328,9 +357,100 @@ export default function Profile() {
             </div>
           )}
 
-          {activeTab === 'orders' && <div className="tab-placeholder"><h3>My Orders Content</h3></div>}
-          {activeTab === 'address' && <div className="tab-placeholder"><h3>Delivery Address Content</h3></div>}
-          {activeTab === 'payment' && <div className="tab-placeholder"><h3>Payment Methods Content</h3></div>}
+          {activeTab === 'orders' && (
+            <div className="wishlist-tab-content">
+              <div className="wishlist-header">
+                <h2>My Orders</h2>
+              </div>
+              
+              {loadingOrders ? (
+                <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280', fontSize: '16px' }}>Loading order history...</div>
+              ) : orders.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px', color: '#9ca3af', border: '1px dashed #d1d5db', borderRadius: '12px', backgroundColor: '#fff' }}>
+                  <h3>You haven't placed any orders yet.</h3>
+                  <Link to="/services" className="btn-primary" style={{ display: 'inline-block', marginTop: '15px', textDecoration: 'none' }}>Order Now</Link>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {orders.map(order => (
+                    <div key={order.id} style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '20px', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f3f4f6', paddingBottom: '12px', marginBottom: '15px' }}>
+                        <div>
+                          <span style={{ fontSize: '13px', color: '#9ca3af' }}>Order ID</span>
+                          <h4 style={{ margin: '2px 0 0 0', color: '#c24438' }}>#{order.id}</h4>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: '13px', color: '#9ca3af' }}>Placed On</span>
+                          <h5 style={{ margin: '2px 0 0 0', color: '#374151' }}>{new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</h5>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '13px', color: '#9ca3af', display: 'block', textAlign: 'right' }}>Status</span>
+                          <span className={`status-badge ${order.status.toLowerCase().replace(' ', '-')}`} style={{ display: 'inline-block', marginTop: '2px' }}>{order.status}</span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
+                        {order.items?.map((item, index) => {
+                          const itemImg = item.image && (item.image.startsWith('http') || item.image.startsWith('data:') || item.image.startsWith('/uploads/'))
+                            ? item.image
+                            : `${import.meta.env.BASE_URL || '/'}${item.image || ''}`;
+
+                          return (
+                            <div key={index} style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                              <img src={itemImg} alt={item.name} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #eee' }} onError={(e)=>{e.target.src='https://placehold.co/50x50/e2e8f0/64748b?text=Img'}} />
+                              <div style={{ flex: 1 }}>
+                                <h5 style={{ margin: '0 0 3px 0', color: '#1f2937' }}>{item.name}</h5>
+                                <span style={{ fontSize: '12px', color: '#6b7280' }}>EGP {item.price.toLocaleString()} × {item.quantity}</span>
+                              </div>
+                              <div style={{ fontWeight: 'bold', color: '#111827' }}>
+                                EGP {(item.price * item.quantity).toLocaleString()}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: '12px', fontSize: '14px' }}>
+                        <div>
+                          <span style={{ color: '#6b7280' }}>Shipping Address: </span>
+                          <strong style={{ color: '#374151' }}>{order.address}</strong>
+                        </div>
+                        <div style={{ fontWeight: '800', fontSize: '16px', color: '#111827' }}>
+                          Total: <span style={{ color: '#c24438' }}>EGP {order.total.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'address' && (
+            <div className="wishlist-tab-content">
+              <div className="wishlist-header">
+                <h2>Delivery Address</h2>
+              </div>
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '25px', backgroundColor: '#fff' }}>
+                <span style={{ fontSize: '24px' }}>📍</span>
+                <h4 style={{ marginTop: '10px', color: '#111827' }}>Primary Address</h4>
+                <p style={{ color: '#4B5563', fontSize: '14px' }}>{user.phone ? 'Cairo, Giza, Egypt' : 'No primary address saved. Add one during checkout.'}</p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'payment' && (
+            <div className="wishlist-tab-content">
+              <div className="wishlist-header">
+                <h2>Payment Methods</h2>
+              </div>
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '25px', backgroundColor: '#fff' }}>
+                <span style={{ fontSize: '24px' }}>💳</span>
+                <h4 style={{ marginTop: '10px', color: '#111827' }}>Cash on Delivery (Default)</h4>
+                <p style={{ color: '#4B5563', fontSize: '14px' }}>You have not linked any cards yet.</p>
+              </div>
+            </div>
+          )}
 
         </main>
       </div>

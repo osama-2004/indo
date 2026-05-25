@@ -1,31 +1,92 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../App'
 import './Auth.css'
 import logo from '../assets/logo.svg';
 
-// ==========================================
-// REGISTRATION COMPONENT (SIGN UP)
-// ==========================================
 export default function SignUp() {
   const [form, setForm] = useState({ username: '', email: '', password: '', role: 'Buyer', terms: false })
   const [showPassword, setShowPassword] = useState(false) 
   const [showTerms, setShowTerms] = useState(false) 
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [socialModal, setSocialModal] = useState({ isOpen: false, provider: '', name: 'Osama Korashy', email: 'osama@gmail.com', role: 'Buyer' });
+  const [socialLoading, setSocialLoading] = useState(false);
   const navigate = useNavigate()
+  const { signup, socialLogin } = useAuth()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if(!form.terms) return alert("Please accept the terms")
     
-    // Inject secure localized session keys safely into browser storage
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('userRole', form.role.toLowerCase()); 
-    
-    // 🛠️ CRITICAL FIX: Force immediate storage event dispatching so App.jsx catches the updates before routing
-    window.dispatchEvent(new Event('storage'));
-    
-    // 🛠️ Redirecting vectors explicitly towards the newly established standard home page
-    navigate('/home', { replace: true });
+    setError('')
+    setLoading(true)
+
+    try {
+      const lowerRole = form.role.toLowerCase(); // 'buyer' or 'supplier'
+      const name = form.username; // Default name to username for form simplicity
+
+      const res = await signup({
+        username: form.username.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        role: lowerRole,
+        name
+      });
+
+      // Auto-route based on roles
+      if (res.user.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (res.user.role === 'supplier') {
+        navigate('/supplier', { replace: true });
+      } else {
+        navigate('/home', { replace: true });
+      }
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
+
+  const handleOpenSocial = (provider) => {
+    setSocialModal({
+      isOpen: true,
+      provider,
+      name: provider === 'Google' ? 'Osama Korashy' : provider === 'Facebook' ? 'Osama FB' : 'Osama Apple',
+      email: provider === 'Google' ? 'osama@gmail.com' : provider === 'Facebook' ? 'osama.fb@facebook.com' : 'osama@apple.id',
+      role: form.role // Use the currently selected role from the form
+    });
+  };
+
+  const handleSocialSubmit = async (e) => {
+    e.preventDefault();
+    setSocialLoading(true);
+    setError('');
+    try {
+      const res = await socialLogin({
+        email: socialModal.email.trim(),
+        name: socialModal.name.trim(),
+        provider: socialModal.provider.toLowerCase(),
+        role: socialModal.role.toLowerCase()
+      });
+      setSocialModal({ ...socialModal, isOpen: false });
+      
+      // Auto-route based on roles
+      if (res.user.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (res.user.role === 'supplier') {
+        navigate('/supplier', { replace: true });
+      } else {
+        navigate('/home', { replace: true });
+      }
+    } catch (err) {
+      setError(err.message || 'Social registration failed.');
+      setSocialModal({ ...socialModal, isOpen: false });
+    } finally {
+      setSocialLoading(false);
+    }
+  };
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword)
@@ -40,13 +101,19 @@ export default function SignUp() {
             ========================================== */}
         <div className="auth-form-section">
           <div className="brand-logo">
-            {/* 🛠️ Configured to fetch from public folder utilizing Base URL structures */}
             <img src={logo} alt="Logo" />
           </div>
 
           <h1 className="welcome-text">Create an account</h1>
 
           <form onSubmit={handleSubmit} className="login-form">
+            
+            {error && (
+              <div style={{ color: '#EF4444', backgroundColor: '#FEE2E2', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', marginBottom: '15px', textAlign: 'center' }}>
+                {error}
+              </div>
+            )}
+
             {/* Username Entry view */}
             <div className="input-group">
               <input
@@ -56,6 +123,7 @@ export default function SignUp() {
                 value={form.username}
                 onChange={e => setForm({...form, username: e.target.value})}
                 required
+                disabled={loading}
               />
             </div>
             
@@ -68,6 +136,7 @@ export default function SignUp() {
                 value={form.email}
                 onChange={e => setForm({...form, email: e.target.value})}
                 required
+                disabled={loading}
               />
             </div>
 
@@ -80,6 +149,7 @@ export default function SignUp() {
                 value={form.password}
                 onChange={e => setForm({...form, password: e.target.value})}
                 required
+                disabled={loading}
               />
               <span className="eye-icon" onClick={togglePasswordVisibility} style={{ cursor: 'pointer', position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
                 {showPassword ? (
@@ -99,11 +169,11 @@ export default function SignUp() {
             {/* Account Role Privilege Selectors - Modified to Checkboxes */}
             <div className="role-container" style={{ display: 'flex', gap: '20px', margin: '15px 0' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                <input type="checkbox" checked={form.role === 'Buyer'} onChange={() => setForm({...form, role: 'Buyer'})} /> 
+                <input type="checkbox" checked={form.role === 'Buyer'} onChange={() => setForm({...form, role: 'Buyer'})} disabled={loading} /> 
                 <span>Buyer</span>
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                <input type="checkbox" checked={form.role === 'Supplier'} onChange={() => setForm({...form, role: 'Supplier'})} /> 
+                <input type="checkbox" checked={form.role === 'Supplier'} onChange={() => setForm({...form, role: 'Supplier'})} disabled={loading} /> 
                 <span>Supplier</span>
               </label>
             </div>
@@ -115,13 +185,16 @@ export default function SignUp() {
                 checked={form.terms} 
                 onChange={e => setForm({...form, terms: e.target.checked})}
                 id="terms"
+                disabled={loading}
               />
               <label htmlFor="terms">
                 I agree to <span className="terms-link" onClick={() => setShowTerms(true)}>Terms & Privacy Policy</span>
               </label>
             </div>
 
-            <button type="submit" className="login-btn">Sign Up</button>
+            <button type="submit" className="login-btn" disabled={loading}>
+              {loading ? 'Creating Account...' : 'Sign Up'}
+            </button>
           </form>
 
           {/* Social login option interfaces separator */}
@@ -131,20 +204,19 @@ export default function SignUp() {
 
           {/* Federated Identity Provider anchors - Colors adjusted */}
           <div className="social-login" style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '10px' }}>
-            <button className="social-btn" style={{ background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '50%', padding: '10px', cursor: 'pointer' }}>
+            <button type="button" className="social-btn" onClick={() => handleOpenSocial('Google')} style={{ background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '50%', padding: '10px', cursor: 'pointer' }}>
               <img src="https://cdn-icons-png.flaticon.com/512/2991/2991148.png" alt="Google" style={{ width: '20px' }} />
             </button>
-            <button className="social-btn" style={{ background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '50%', padding: '10px', cursor: 'pointer' }}>
+            <button type="button" className="social-btn" onClick={() => handleOpenSocial('Apple')} style={{ background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '50%', padding: '10px', cursor: 'pointer' }}>
               <img src="https://cdn-icons-png.flaticon.com/512/0/747.png" alt="Apple" style={{ width: '20px' }} />
             </button>
-            <button className="social-btn" style={{ background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '50%', padding: '10px', cursor: 'pointer' }}>
+            <button type="button" className="social-btn" onClick={() => handleOpenSocial('Facebook')} style={{ background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '50%', padding: '10px', cursor: 'pointer' }}>
               <img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style={{ width: '20px' }} />
             </button>
           </div>
 
           {/* Alternative login routing viewport links */}
           <div className="auth-footer">
-            {/* 🛠️ Fixed navigation path link to point to standard independent /login route */}
             Already have an account? <Link to="/login" className="login-link-red">Login</Link>
           </div>
         </div>
@@ -154,8 +226,7 @@ export default function SignUp() {
             ========================================== */}
         <div className="auth-image-section">
           <div className="image-wrapper">
-             {/* Dynamic context injection deployment mapping for GitHub absolute path structures */}
-             <img src={`${import.meta.env.BASE_URL}hero_men_warehouse..png`} alt="Business warehouse" />
+             <img src={`${import.meta.env.BASE_URL}hero_men_warehouse.png`} alt="Business warehouse" onError={(e)=>{e.target.src='https://placehold.co/400x600/f3f4f6/64748b?text=IndusConnect'}} />
           </div>
         </div>
 
@@ -167,7 +238,7 @@ export default function SignUp() {
       {showTerms && (
         <div className="modal-overlay">
           <div className="terms-modal">
-            <button className="close-modal" onClick={() => setShowTerms(false)}>&times;</button>
+            <button type="button" className="close-modal" onClick={() => setShowTerms(false)}>&times;</button>
             <h2>Terms & Privacy Policy</h2>
             
             <div className="modal-content">
@@ -178,9 +249,88 @@ export default function SignUp() {
               <p>We collect basic user information such as name, email and business details to improve our services. Your data is kept secure and will not be shared with third parties without your consent, except when required to operate the platform. By using IndusConnect, you agree to our data practices.</p>
             </div>
 
-            <button className="accept-btn" onClick={() => { setForm({...form, terms: true}); setShowTerms(false); }}>
+            <button type="button" className="accept-btn" onClick={() => { setForm({...form, terms: true}); setShowTerms(false); }}>
               Accept
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          MOCK SOCIAL AUTH MODAL
+          ========================================== */}
+      {socialModal.isOpen && (
+        <div className="modal-overlay">
+          <div className="terms-modal social-modal-card">
+            <button type="button" className="close-modal" onClick={() => setSocialModal({ ...socialModal, isOpen: false })}>&times;</button>
+            
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <img 
+                src={
+                  socialModal.provider === 'Google' ? 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' :
+                  socialModal.provider === 'Apple' ? 'https://cdn-icons-png.flaticon.com/512/0/747.png' :
+                  'https://cdn-icons-png.flaticon.com/512/124/124010.png'
+                } 
+                alt={socialModal.provider} 
+                style={{ width: '50px', height: '50px', marginBottom: '10px' }} 
+              />
+              <h2 style={{ fontSize: '20px', margin: '5px 0' }}>Register with {socialModal.provider}</h2>
+              <p style={{ color: '#6B7280', fontSize: '12px', margin: '0' }}>Simulated OAuth verification for local development</p>
+            </div>
+
+            <form onSubmit={handleSocialSubmit}>
+              <div className="input-group" style={{ marginBottom: '15px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4B5563', marginBottom: '5px', display: 'block' }}>Name</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  value={socialModal.name} 
+                  onChange={e => setSocialModal({ ...socialModal, name: e.target.value })} 
+                  required 
+                  disabled={socialLoading} 
+                />
+              </div>
+
+              <div className="input-group" style={{ marginBottom: '15px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4B5563', marginBottom: '5px', display: 'block' }}>Email Address</label>
+                <input 
+                  type="email" 
+                  className="input-field" 
+                  value={socialModal.email} 
+                  onChange={e => setSocialModal({ ...socialModal, email: e.target.value })} 
+                  required 
+                  disabled={socialLoading} 
+                />
+              </div>
+
+              <div className="input-group" style={{ marginBottom: '15px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4B5563', marginBottom: '5px', display: 'block' }}>Select Role</label>
+                <div className="role-container" style={{ display: 'flex', gap: '20px', marginTop: '5px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={socialModal.role === 'Buyer'} 
+                      onChange={() => setSocialModal({ ...socialModal, role: 'Buyer' })} 
+                      disabled={socialLoading} 
+                    /> 
+                    <span>Buyer</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={socialModal.role === 'Supplier'} 
+                      onChange={() => setSocialModal({ ...socialModal, role: 'Supplier' })} 
+                      disabled={socialLoading} 
+                    /> 
+                    <span>Supplier</span>
+                  </label>
+                </div>
+              </div>
+
+              <button type="submit" className="login-btn" style={{ marginTop: '20px' }} disabled={socialLoading}>
+                {socialLoading ? 'Creating Account...' : `Register with ${socialModal.provider}`}
+              </button>
+            </form>
           </div>
         </div>
       )}

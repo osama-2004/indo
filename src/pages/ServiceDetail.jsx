@@ -1,40 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useFavorites } from '../App'; // 🛠️ الحفاظ على استدعاء المفضلة
+import { useFavorites, useCart } from '../App'; 
+import { productsAPI } from '../api/products';
 import './ServiceDetail.css'
 
-// ============================================================================
-// HELPER UTILITY: RESOLVE PUBLIC IMAGE PATHS
-// ============================================================================
-// Resolves dynamic image source paths correctly for local and live environments
 const getProductImage = (imageName) => {
-  if (!imageName) return 'https://via.placeholder.com/300?text=IndusConnect';
-  if (imageName.startsWith('data:') || imageName.startsWith('http')) return imageName;
-  
-  // Clean forward slash if exists to prevent duplicate token rendering errors
+  if (!imageName) return 'https://placehold.co/300x300/e2e8f0/64748b?text=IndusConnect';
+  if (imageName.startsWith('data:') || imageName.startsWith('http') || imageName.startsWith('/uploads/')) {
+    return imageName;
+  }
   const cleanPath = imageName.startsWith('/') ? imageName.substring(1) : imageName;
-  
-  // Dynamically attach GitHub Pages base path configuration parameters
   return `${import.meta.env.BASE_URL}${cleanPath}`;
 };
 
-// ============================================================================
-// DATA REFERENCE: DEFAULT PRODUCTS FALLBACK ARRAY
-// ============================================================================
-// Core repository placeholder when external state management keys are initialized empty
-const DEFAULT_PRODUCTS = [
-  { id: 1, name: 'Modern Pendant Light', price: 600, category: 'Furniture', rating: 4, reviews: 100, image: 'product_amber_pendant.png', description: 'Modern lamp with a practical and artistic design.', seller: 'Beit el ezz' },
-  { id: 2, name: 'Synthetic Leather', price: 30, category: 'Raw Material', rating: 2, reviews: 50, image: 'product_leather_chair_premium.png', description: 'Leather ideal for wallets and small accessories.', seller: 'Beit el ezz' },
-  { id: 3, name: 'Cardboard Boxes', price: 10, category: 'Package', rating: 5, reviews: 50, image: 'product_agri_equipment.png', description: 'Strong boxes for safe packaging and delivery.', seller: 'Beit el ezz' },
-  { id: 4, name: 'Solid Shelf Table', price: 1000, category: 'Furniture', rating: 5, reviews: 300, image: 'cat_furniture_shelf.png', description: 'Sleek wooden table with a functional shelf.', seller: 'Beit el ezz' },
-  { id: 5, name: 'Hoodies', price: 250, category: 'Textile', rating: 4, reviews: 100, image: 'cat_textile_hoodies.png', description: 'Comfortable hoodies suitable for casual wear.', seller: 'Beit el ezz' },
-  { id: 6, name: 'PVC Rolls', price: 500, category: 'Raw Material', rating: 3, reviews: 400, image: 'cat_raw_pvc.png', description: 'Flexible PVC rolls used for industrial applications.', seller: 'Beit el ezz' }
-];
-
-// ============================================================================
-// SUB-COMPONENT: STAR RATING RENDER ENGINE
-// ============================================================================
-// Handles evaluation stars rendering configurations along with customer totals text
 const StarRating = ({ rating, totalReviews }) => (
   <div className="star-rating-container">
     <div className="stars-gold">
@@ -46,43 +24,36 @@ const StarRating = ({ rating, totalReviews }) => (
   </div>
 );
 
-// ============================================================================
-// MAIN COMPONENT: SERVICE DETAIL OPERATIONS WINDOW
-// ============================================================================
 export default function ServiceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   
-  // 🛠️ الحفاظ على تفعيل المفضلة
   const { toggleFavorite, isFavorite } = useFavorites();
+  const { addToCart } = useCart();
 
-  // Local state hook reflecting dynamic updates derived from localStorage keys
-  const [liveProducts, setLiveProducts] = useState(() => {
-    const saved = localStorage.getItem('indus_products');
-    return saved ? JSON.parse(saved) : DEFAULT_PRODUCTS;
-  });
-
-  // Effect sync tracking storage parameter modifications across decoupled system interfaces
-  useEffect(() => {
-    const syncLiveProducts = () => {
-      const saved = localStorage.getItem('indus_products');
-      if (saved) setLiveProducts(JSON.parse(saved));
-    };
-    window.addEventListener('storage', syncLiveProducts);
-    return () => window.removeEventListener('storage', syncLiveProducts);
-  }, []);
-
-  // Strict targeted matching calculation query mapping parameters directly to string format structures
-  const product = liveProducts.find(p => p.id.toString() === id.toString()) || liveProducts[0];
-  
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('reviews');
   const [qty, setQty] = useState(1); 
   const [visibleReviews, setVisibleReviews] = useState(3);
-  
-  // 🛠️ التحقق هل المنتج في المفضلة
-  const isFav = isFavorite(product.id);
 
-  // Hardcoded evaluation contextual mock dataset parameters
+  useEffect(() => {
+    const fetchProduct = async () => {
+      setLoading(true);
+      try {
+        const data = await productsAPI.getProduct(id);
+        setProduct(data);
+      } catch (err) {
+        console.error("Error loading product detail from server:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProduct();
+  }, [id]);
+
+  const isFav = product ? isFavorite(product.id) : false;
+
   const reviewsData = [
     { id: 1, name: 'Laila Hassan', stars: 4, text: 'Excellent quality, exactly as described.', img: 'https://i.pravatar.cc/100?u=1' },
     { id: 2, name: 'Nour Yehia', stars: 3, text: 'Durable and perfect for our projects.', img: 'https://i.pravatar.cc/100?u=2' },
@@ -90,36 +61,38 @@ export default function ServiceDetail() {
     { id: 4, name: 'Omar Ali', stars: 5, text: 'Fantastic piece of art!', img: 'https://i.pravatar.cc/100?u=4' },
   ];
 
-  // Dispatches state data matrices directly into client shopping cart context arrays
-  const handleAddToCart = () => {
-    const cartItem = {
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      quantity: qty,
-      image: getProductImage(product.image || product.images?.[0]), 
-      seller: product.seller || 'IndusConnect Official'
-    };
-
-    const existingCart = JSON.parse(localStorage.getItem('cart')) || [];
-    const existingItemIndex = existingCart.findIndex(item => item.id === product.id);
-    
-    if (existingItemIndex > -1) {
-      existingCart[existingItemIndex].quantity += qty;
-    } else {
-      existingCart.push(cartItem);
+  const handleAddToCart = async () => {
+    if (!product) return;
+    try {
+      await addToCart(product, qty);
+      alert(`🛒 Added ${qty}x ${product.name} to your cart successfully!`);
+      navigate('/cart');
+    } catch (err) {
+      console.error(err);
     }
-
-    localStorage.setItem('cart', JSON.stringify(existingCart));
-    window.dispatchEvent(new Event('cartUpdated')); 
-    navigate('/cart');
   };
 
-  // Triggers viewport layout focus vectors directly towards secondary panel modules
   const scrollToReviews = () => {
     setActiveTab('reviews');
     document.getElementById('tabs-section')?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', fontSize: '20px', color: '#6b7280' }}>
+        Loading product details...
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '80vh', gap: '15px' }}>
+        <h2>Product not found</h2>
+        <button onClick={() => navigate('/services')} style={{ padding: '10px 20px', backgroundColor: '#c24438', color: '#fff', border: 'none', borderRadius: '30px', cursor: 'pointer' }}>Back to Products</button>
+      </div>
+    );
+  }
 
   return (
     <div className="page-wrapper">
@@ -131,9 +104,7 @@ export default function ServiceDetail() {
         
         {/* Left Column Aspect Frame: Dynamic Product Media Viewport Wrapper */}
         <div className="image-column">
-          {/* 🛠️ تعديل: إزالة مقاسات حاوية الصورة وتوسيط المحتوى. الإبقاء فقط على الموضع النسبي لاستقرار القلب */}
           <div className="main-image-holder" style={{cursor: 'pointer', position: 'relative'}}>
-            {/* 🛠️ الحفاظ على زر المفضلة ومنطقه البرمجي. تنظيف الـ Inline Styles المنسقة */}
             <button 
               className={`heart-icon-btn ${isFav ? 'active-fav' : ''}`}
               style={{
@@ -141,7 +112,17 @@ export default function ServiceDetail() {
                 top: '15px',
                 right: '15px',
                 zIndex: 10,
-                color: isFav ? '#c24438' : '#999'
+                color: isFav ? '#c24438' : '#999',
+                border: 'none',
+                background: 'rgba(255,255,255,0.8)',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                cursor: 'pointer'
               }}
               onClick={(e) => {
                 e.preventDefault();
@@ -152,12 +133,11 @@ export default function ServiceDetail() {
               {isFav ? '❤️' : '♡'}
             </button>
             
-            {/* 🛠️ تعديل: إزالة الـ Inline Styles الخاصة بمقاسات الصورة (width/height/objectFit) لتعود لشكلها الأصلي */}
             <img 
-              src={getProductImage(product.image || product.images?.[0])} 
+              src={getProductImage(product.image)} 
               alt={product.name} 
               className="img-fluid" 
-              onError={(e) => { e.target.src = 'https://via.placeholder.com/300?text=IndusConnect'; }}
+              onError={(e) => { e.target.src = 'https://placehold.co/300x300/e2e8f0/64748b?text=No+Image'; }}
             />
           </div>
         </div>
@@ -206,7 +186,7 @@ export default function ServiceDetail() {
       <div className="seller-info-strip">
         <div className="seller-profile" onClick={scrollToReviews} style={{cursor: 'pointer'}}>
           <div className="avatar-circle">👤</div>
-          <p>Sold by <strong style={{textDecoration: 'underline'}}>{product.seller || 'IndusConnect Official'}</strong></p>
+          <p>Sold by <strong style={{textDecoration: 'underline'}}>{product.supplier_name || 'IndusConnect Official'}</strong></p>
           <span className="rating-tag">⭐ 4.8 ({reviewsData.length} Reviews)</span>
         </div>
       </div>

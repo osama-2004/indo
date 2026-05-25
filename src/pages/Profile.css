@@ -1,4 +1,4 @@
-/* --- إعدادات الحاوية الكلية --- */
+
 .account-container {
   background-color: #f4f6f8;
   min-height: 100vh;
@@ -15,13 +15,13 @@
   align-items: flex-start;
 }
 
-/* --- السايد بار الأيسر (Sidebar) --- */
+
 .account-sidebar {
   width: 280px;
   flex-shrink: 0;
 }
 
-/* كارت الحساب العلوي */
+
 .user-info-card {
   background: white;
   border-radius: 12px;
@@ -57,7 +57,7 @@
   color: #64748b;
 }
 
-/* قائمة التصفح */
+
 .sidebar-nav {
   background: white;
   border-radius: 12px;
@@ -114,12 +114,11 @@
   color: #ef4444;
 }
 
-/* --- محتوى الصفحة الرئيسي الأيمن --- */
+
 .account-main-content {
   flex-grow: 1;
 }
 
-/* هيدر صفحة الـ Wishlist */
 .wishlist-header {
   display: flex;
   justify-content: space-between;
@@ -156,13 +155,12 @@
 .share-btn { background-color: #ce423a; }
 .edit-btn { background-color: #ce423a; }
 
-/* الحالة الفارغة بمنتصف الـ Wishlist */
 .empty-wishlist-state {
   text-align: center;
   padding: 60px 0;
 }
 
-/* الصندوق التعبيري الأصفر بالكامل عبر CSS */
+
 .yellow-box {
   width: 60px;
   height: 55px;
@@ -212,7 +210,7 @@
   text-transform: uppercase;
 }
 
-/* --- تصميم كروت المنتجات السفلية --- */
+
 .wishlist-products-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -339,4 +337,87 @@
   border-radius: 12px;
   text-align: center;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+/* =========================================
+  (Responsive Media Queries)
+   ========================================= */
+
+@media (max-width: 992px) {
+  .account-layout {
+    flex-direction: column; 
+    gap: 30px;
+  }
+  
+  .account-sidebar {
+    width: 100%; 
+  }
+
+  .sidebar-nav {
+   
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+}
+
+
+@media (max-width: 768px) {
+  .account-container {
+    padding: 20px 5%;
+    margin-top: 70px;
+  }
+
+  .wishlist-header {
+    flex-direction: column; 
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .wishlist-actions {
+    width: 100%;
+    display: flex;
+    gap: 10px;
+  }
+
+  .action-btn {
+    flex: 1; 
+    justify-content: center; 
+  }
+
+  .wishlist-products-grid {
+    gap: 15px;
+    margin-top: 30px;
+  }
+  
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column; 
+  }
+}
+
+
+@media (max-width: 480px) {
+  .wishlist-header h2 {
+    font-size: 24px; 
+  }
+
+  .wishlist-products-grid {
+    grid-template-columns: 1fr; 
+  }
+
+  .user-info-card {
+    flex-direction: column; 
+    text-align: center;
+  }
+  
+  .wish-overlay-buttons {
+   
+    top: 10px;
+    right: 10px;
+  }
+  
+  .wish-circle-btn {
+    width: 38px;
+    height: 38px;
+  }
 }

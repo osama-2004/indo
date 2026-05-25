@@ -639,3 +639,12 @@
 .reset-footer-links a:hover {
   text-decoration: underline;
 }
+
+/* ==========================================
+   Mock Social Login Modal Styles
+   ========================================== */
+.social-modal-card {
+  max-width: 420px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e5e7eb;
+}

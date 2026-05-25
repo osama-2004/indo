@@ -1,27 +1,66 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useFavorites, useCart } from '../App'; // 🛠️ تم إضافة useCart هنا
-import { DEFAULT_PRODUCTS } from './Services'; 
+import { useFavorites, useCart } from '../App'; 
+import { favoritesAPI } from '../api/favorites';
 import './favorites.css'; 
 
-export default function Favorites() {
-  const { favorites, toggleFavorite } = useFavorites();
-  const { addToCart } = useCart(); // 🛠️ جلب دالة إضافة المنتجات للسلة
+const getSafeImageSrc = (imagePath) => {
+  if (!imagePath) return 'https://placehold.co/300x300/e2e8f0/64748b?text=No+Image';
+  if (imagePath.startsWith('http') || imagePath.startsWith('data:') || imagePath.startsWith('/uploads/')) return imagePath;
 
-  const favoriteProducts = DEFAULT_PRODUCTS.filter(p => favorites.includes(p.id));
-
-  // دالة معالجة مسارات الصور
-  const getSafeImageSrc = (imagePath) => {
-    if (!imagePath) return 'https://via.placeholder.com/300?text=No+Image';
-    if (imagePath.startsWith('http') || imagePath.startsWith('data:')) return imagePath;
-
-    const baseUrl = import.meta.env.BASE_URL.endsWith('/') 
-      ? import.meta.env.BASE_URL 
-      : `${import.meta.env.BASE_URL}/`;
-      
-    const cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+  const baseUrl = import.meta.env.BASE_URL.endsWith('/') 
+    ? import.meta.env.BASE_URL 
+    : `${import.meta.env.BASE_URL}/`;
     
-    return `${baseUrl}${cleanPath}`;
+  const cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+  
+  return `${baseUrl}${cleanPath}`;
+};
+
+export default function Favorites() {
+  const { toggleFavorite } = useFavorites();
+  const { addToCart } = useCart();
+
+  const [favoriteProducts, setFavoriteProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchFavorites = async () => {
+    setLoading(true);
+    try {
+      const data = await favoritesAPI.getFavorites();
+      setFavoriteProducts(data);
+    } catch (error) {
+      console.error("Failed fetching wishlist from server:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFavorites();
+  }, []);
+
+  const handleRemoveFavorite = async (e, product) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await toggleFavorite(product);
+      // Wait a moment then reload list
+      setTimeout(fetchFavorites, 100);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAddToCart = async (e, product) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await addToCart(product, 1);
+      alert(`🛒 ${product.name} added to cart!`);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -36,7 +75,9 @@ export default function Favorites() {
           <Link to="/services" className="favorites-btn">Back to Shop</Link>
         </div>
 
-        {favoriteProducts.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280', fontSize: '18px' }}>Loading wishlist items...</div>
+        ) : favoriteProducts.length === 0 ? (
           <div className="favorites-empty-state">
             <div className="favorites-empty-icon">❤️</div>
             <h3>Your Wishlist is Empty</h3>
@@ -61,31 +102,20 @@ export default function Favorites() {
                     <img 
                       src={imageSrc} 
                       alt={product.name} 
-                      onError={(e) => { e.target.src = 'https://via.placeholder.com/300?text=Image+Not+Found'; }}
+                      onError={(e) => { e.target.src = 'https://placehold.co/300x300/e2e8f0/64748b?text=Image+Not+Found'; }}
                     />
                     
-                    {/* الأزرار فوق الصورة */}
                     <div className="img-overlay-actions inline-icons" style={{ opacity: 1 }}>
-                      {/* زر الحذف من المفضلة */}
                       <button 
                         className="circle-icon fav-icon-btn" 
-                        onClick={(e) => {
-                          e.preventDefault(); 
-                          e.stopPropagation(); 
-                          toggleFavorite(product);
-                        }} 
+                        onClick={(e) => handleRemoveFavorite(e, product)} 
                       >
                         ❤️
                       </button>
 
-                      {/* 🛠️ زر إضافة المنتج إلى السلة */}
                       <button 
                         className="circle-icon cart-icon-btn" 
-                        onClick={(e) => {
-                          e.preventDefault(); // منع الانتقال لصفحة التفاصيل
-                          e.stopPropagation(); // منع انتشار الحدث لملف الـ Link
-                          addToCart(product); // إضافة المنتج
-                        }} 
+                        onClick={(e) => handleAddToCart(e, product)} 
                       >
                         🛒
                       </button>
@@ -117,7 +147,7 @@ export default function Favorites() {
                         <div className="footer-icon red-tag">🏷️</div>
                         <div className="footer-text">
                           <div className="label">Unit Price</div>
-                          <div className="value">{product.unitPrice || 'N/A'}</div>
+                          <div className="value">{product.unit_price || product.unitPrice || 'N/A'}</div>
                         </div>
                       </div>
                     </div>
