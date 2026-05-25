@@ -1,4 +1,4 @@
-const BASE_URL = ''; // Empty string so that relative proxy calls are used in development, and the current domain is used in production.
+const BASE_URL = import.meta.env.VITE_API_URL || ''; // Use VITE_API_URL in production, fallback to relative paths in local dev.
 
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('indus_token');

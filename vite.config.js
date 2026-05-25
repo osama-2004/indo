@@ -1,11 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// Use '/' for local dev, '/IndusConnect-/' for GitHub Pages production build
-const isProd = process.env.NODE_ENV === 'production';
+// Set base URL dynamically. Defaults to '/' (e.g. for local dev & Netlify).
+const base = process.env.VITE_BASE_URL || '/';
 
 export default defineConfig({
-  base: isProd ? '/IndusConnect-/' : '/',
+  base,
   plugins: [react()],
   server: {
     proxy: {
