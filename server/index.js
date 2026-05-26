@@ -40,21 +40,8 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow same-origin requests (no origin header, e.g. from the same domain or mobile/server apps)
-    if (!origin) {
-      return callback(null, true);
-    }
-    
-    // Check if the origin matches allowed list or matches production domains dynamically
-    const isAllowed = allowedOrigins.includes(origin);
-    const isRailway = origin.endsWith('.railway.app') || origin.includes('railway.app');
-    const isRender = origin.endsWith('.onrender.com') || origin.includes('onrender.com');
-
-    if (isAllowed || isRailway || isRender) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    // Dynamically allow any origin to prevent CORS blocks on custom domains or local addresses
+    callback(null, true);
   },
   credentials: true
 }));
