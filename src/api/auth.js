@@ -62,5 +62,11 @@ export const authAPI = {
     localStorage.removeItem('indus_token');
     localStorage.removeItem('indus_user');
     window.dispatchEvent(new Event('authChanged'));
-  }
+  },
+
+  forgotPassword: (email) => client.post('/api/auth/forgot-password', { email }),
+
+  verifyOTP: (email, otp) => client.post('/api/auth/verify-otp', { email, otp }),
+
+  resetPassword: (email, otp, newPassword) => client.post('/api/auth/reset-password', { email, otp, newPassword })
 };

@@ -21,9 +21,13 @@ export default function CartPage() {
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
 
-  const handleQtyChange = async (productId, currentQty, delta) => {
+  const handleQtyChange = async (productId, currentQty, delta, moq) => {
+    const moqNum = parseInt((moq || '1').toString().replace(/\D/g, '')) || 1;
     const nextQty = currentQty + delta;
-    if (nextQty < 1) return;
+    if (nextQty < moqNum) {
+      alert(`Minimum order quantity for this product is ${moqNum} units.`);
+      return;
+    }
     try {
       await updateQuantity(productId, nextQty);
     } catch (err) {
@@ -83,11 +87,22 @@ export default function CartPage() {
                     <div className="cart-item-info">
                       <h3>{item.name}</h3>
                       <p className="cart-item-seller">Seller: {item.seller || 'IndusConnect Official'}</p>
+                      {item.moq && (
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '2px 0' }}>
+                          MOQ: <strong>{item.moq}</strong>
+                          {(() => {
+                            const moqNum = parseInt((item.moq || '1').toString().replace(/\D/g, '')) || 1;
+                            return item.quantity < moqNum ? (
+                              <span style={{ color: '#dc2626', marginLeft: '8px', fontWeight: 'bold' }}>⚠ Below minimum quantity!</span>
+                            ) : null;
+                          })()}
+                        </p>
+                      )}
                       <div className="cart-item-controls">
                         <div className="qty-controls">
-                          <button onClick={() => handleQtyChange(item.id, item.quantity, -1)}>−</button>
+                          <button onClick={() => handleQtyChange(item.id, item.quantity, -1, item.moq)}>−</button>
                           <span>{item.quantity || 1}</span>
-                          <button onClick={() => handleQtyChange(item.id, item.quantity, 1)}>+</button>
+                          <button onClick={() => handleQtyChange(item.id, item.quantity, 1, item.moq)}>+</button>
                         </div>
                         <button className="remove-btn" onClick={() => handleRemove(item.id)}>
                           Remove

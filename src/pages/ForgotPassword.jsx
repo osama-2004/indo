@@ -1,16 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { authAPI } from '../api/auth'
 import './Auth.css' 
 import logoImg from '../assets/logo.svg' 
 
 export function ForgotPassword() {
-  const [step, setStep] = useState('email'); 
-  // 🛠️ تم مسح الإيميل الثابت من هنا عشان الخانة تبدأ فاضية
+  const navigate = useNavigate();
+  const [step, setStep] = useState('email');
   const [email, setEmail] = useState(''); 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [timer, setTimer] = useState(59);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -27,9 +31,28 @@ export function ForgotPassword() {
     return () => clearInterval(interval);
   }, [step, timer]);
 
-  const handleEmailSubmit = (e) => {
+  // Step 1: Send OTP to email
+  const handleEmailSubmit = async (e) => {
     e.preventDefault();
-    if (email.trim()) setStep('otp');
+    if (!email.trim()) return;
+    setLoading(true);
+    setError('');
+    try {
+      const res = await authAPI.forgotPassword(email.trim());
+      setSuccessMsg(res.message || 'OTP sent!');
+      // In dev mode, auto-fill OTP if server returns it
+      if (res.devOtp) {
+        const otpDigits = res.devOtp.toString().split('').slice(0, 6);
+        setOtp(otpDigits);
+        console.log('🔑 Dev OTP auto-filled:', res.devOtp);
+      }
+      setStep('otp');
+      setTimer(59);
+    } catch (err) {
+      setError(err.message || 'Failed to send OTP. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOtpChange = (element, index) => {
@@ -56,17 +79,64 @@ export function ForgotPassword() {
     }
   };
 
-  const handleOtpSubmit = (e) => {
+  // Step 2: Verify OTP
+  const handleOtpSubmit = async (e) => {
     e.preventDefault();
-    if (otp.every(slot => slot !== '')) {
+    if (!otp.every(slot => slot !== '')) return;
+    setLoading(true);
+    setError('');
+    try {
+      const otpCode = otp.join('');
+      await authAPI.verifyOTP(email, otpCode);
       setStep('new-password');
+    } catch (err) {
+      setError(err.message || 'Invalid OTP. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handlePasswordSubmit = (e) => {
+  // Step 3: Reset password
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    if (password === confirmPassword && password.length >= 6) {
-      alert("Password Reset Successfully!");
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const otpCode = otp.join('');
+      await authAPI.resetPassword(email, otpCode, password);
+      setSuccessMsg('Password reset successfully! Redirecting to login...');
+      setTimeout(() => navigate('/login'), 2000);
+    } catch (err) {
+      setError(err.message || 'Failed to reset password. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Resend OTP
+  const handleResendOtp = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await authAPI.forgotPassword(email.trim());
+      if (res.devOtp) {
+        const otpDigits = res.devOtp.toString().split('').slice(0, 6);
+        setOtp(otpDigits);
+      }
+      setTimer(59);
+      setSuccessMsg('New OTP sent!');
+    } catch (err) {
+      setError(err.message || 'Failed to resend OTP.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -90,8 +160,19 @@ export function ForgotPassword() {
 
       <div className="reset-header-text">
         <h2>Reset Your Password</h2>
-        <p>Enter the OTP sent to your email to rest your password.</p>
+        <p>Enter the OTP sent to your email to reset your password.</p>
       </div>
+
+      {error && (
+        <div style={{ maxWidth: '420px', margin: '0 auto 15px', padding: '10px 16px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#b91c1c', fontSize: '14px', textAlign: 'center' }}>
+          {error}
+        </div>
+      )}
+      {successMsg && (
+        <div style={{ maxWidth: '420px', margin: '0 auto 15px', padding: '10px 16px', backgroundColor: '#f0fdf4', border: '1px solid #86efac', borderRadius: '8px', color: '#15803d', fontSize: '14px', textAlign: 'center' }}>
+          {successMsg}
+        </div>
+      )}
 
       <div className="reset-cards-layout">
         
@@ -111,10 +192,13 @@ export function ForgotPassword() {
                   placeholder="Enter your email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
                   required
                 />
               </div>
-              <button type="submit" className="reset-action-btn">Continue</button>
+              <button type="submit" className="reset-action-btn" disabled={loading}>
+                {loading ? 'Sending OTP...' : 'Continue'}
+              </button>
             </form>
           </div>
         )}
@@ -140,21 +224,24 @@ export function ForgotPassword() {
                     ref={(el) => (otpRefs.current[index] = el)}
                     onChange={(e) => handleOtpChange(e.target, index)}
                     onKeyDown={(e) => handleOtpKeyDown(e, index)}
+                    disabled={loading}
                   />
                 ))}
               </div>
 
               <div className="resend-code-text">
-                Didn't receive the code ? {' '}
+                Didn't receive the code? {' '}
                 {timer > 0 ? (
                   <span className="timer-countdown">Resend code (00:{timer < 10 ? `0${timer}` : timer})</span>
                 ) : (
-                  <button type="button" className="resend-link-btn" onClick={() => setTimer(59)}>Resend code</button>
+                  <button type="button" className="resend-link-btn" onClick={handleResendOtp} disabled={loading}>
+                    Resend code
+                  </button>
                 )}
               </div>
 
-              <button type="submit" className="reset-action-btn" disabled={otp.some(slot => slot === '')}>
-                Verify OTP
+              <button type="submit" className="reset-action-btn" disabled={otp.some(slot => slot === '') || loading}>
+                {loading ? 'Verifying...' : 'Verify OTP'}
               </button>
             </form>
           </div>
@@ -166,7 +253,7 @@ export function ForgotPassword() {
               <div className="icon-badge lock-icon-badge">🔒</div>
               <div>
                 <h3>Create New Password</h3>
-                <p>Your new password must be different from previous used passwords.</p>
+                <p>Your new password must be different from previously used passwords.</p>
               </div>
             </div>
 
@@ -175,13 +262,12 @@ export function ForgotPassword() {
                 <label>New Password</label>
                 <input 
                   type={showPassword ? "text" : "password"} 
-                  placeholder={showPassword ? "Enter new password (Hide)" : "Enter new password (Show)"} 
+                  placeholder="Enter new password" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
                   required
                 />
-          
-          
                 <span 
                   onClick={() => setShowPassword(!showPassword)} 
                   style={{ position: 'absolute', right: '15px', top: '38px', fontSize: '0.85rem', color: '#6b7280', cursor: 'pointer', fontWeight: '500', userSelect: 'none' }}
@@ -201,9 +287,10 @@ export function ForgotPassword() {
                 <label>Confirm New Password</label>
                 <input 
                   type={showConfirmPassword ? "text" : "password"} 
-                  placeholder={showConfirmPassword ? "Re-enter new password " : "Re-enter new password "} 
+                  placeholder="Re-enter new password" 
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={loading}
                   required
                 />
                 <span 
@@ -214,12 +301,12 @@ export function ForgotPassword() {
                 </span>
               </div>
 
-              <button type="submit" className="reset-action-btn" style={{ marginTop: '30px' }}>
-                Update Password
+              <button type="submit" className="reset-action-btn" style={{ marginTop: '30px' }} disabled={loading}>
+                {loading ? 'Updating Password...' : 'Update Password'}
               </button>
 
               <div className="reset-footer-links">
-                Remember your password ? <Link to="/login">Back to login</Link>
+                Remember your password? <Link to="/login">Back to login</Link>
               </div>
             </form>
           </div>

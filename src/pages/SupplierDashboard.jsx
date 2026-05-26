@@ -46,6 +46,11 @@ export default function SupplierDashboard() {
   const [newProduct, setNewProduct] = useState({ 
     name: '', category: '', price: '', quantity: '', status: 'Approved', image: '', imageFile: null
   });
+
+  // RFQ Quote modal state
+  const [rfqQuoteModal, setRfqQuoteModal] = useState({ open: false, rfqId: null, rfqProduct: '' });
+  const [quoteUnitPrice, setQuoteUnitPrice] = useState('');
+  const [quoteDeliveryDays, setQuoteDeliveryDays] = useState('');
   
   const fileInputRef = useRef(null);
 
@@ -76,6 +81,37 @@ export default function SupplierDashboard() {
       setRfqs(data);
     } catch (err) {
       console.error('Failed fetching RFQs:', err);
+    }
+  };
+
+  const handleRFQStatusUpdate = async (rfqId, status) => {
+    try {
+      await rfqAPI.updateRFQStatus(rfqId, status);
+      alert(`RFQ ${status} successfully!`);
+      fetchIncomingRfqs();
+    } catch (err) {
+      alert('Failed to update RFQ status: ' + err.message);
+    }
+  };
+
+  const handleSendQuote = async (e) => {
+    e.preventDefault();
+    if (!quoteUnitPrice || !quoteDeliveryDays) {
+      alert('Please fill in unit price and delivery days.');
+      return;
+    }
+    try {
+      await rfqAPI.respondToRFQ(rfqQuoteModal.rfqId, {
+        unitPrice: parseFloat(quoteUnitPrice),
+        deliveryDays: parseInt(quoteDeliveryDays)
+      });
+      alert('Quotation sent successfully! The buyer will see your offer.');
+      setRfqQuoteModal({ open: false, rfqId: null, rfqProduct: '' });
+      setQuoteUnitPrice('');
+      setQuoteDeliveryDays('');
+      fetchIncomingRfqs();
+    } catch (err) {
+      alert('Failed to send quotation: ' + err.message);
     }
   };
 
@@ -306,7 +342,7 @@ export default function SupplierDashboard() {
           {activeTab === 'rfq' && (
             <div className="card-panel p-0">
               <table className="data-table">
-                <thead><tr><th>Id ↕</th><th>Buyer ↕</th><th>Needed By ↕</th><th>Product ↕</th><th>Quantity</th><th>Budget</th></tr></thead>
+                <thead><tr><th>Id ↕</th><th>Buyer ↕</th><th>Needed By</th><th>Product ↕</th><th>Qty</th><th>Budget</th><th>Status</th><th style={{ textAlign: 'center' }}>Actions</th></tr></thead>
                 <tbody>
                   {rfqs.length > 0 ? rfqs.map((item) => (
                     <tr key={item.id}>
@@ -321,9 +357,42 @@ export default function SupplierDashboard() {
                       <td className="fw-bold text-dark">{item.product}</td>
                       <td className="fw-bold"><span className="text-red">{item.quantity}</span> <span className="text-muted">Unit</span></td>
                       <td className="fw-bold"><span className="text-red">{item.budget ? item.budget.toLocaleString() : 'N/A'}</span> <span className="text-muted">EGP</span></td>
+                      <td>
+                        <span className={`status-badge ${(item.status || 'pending').toLowerCase()}`}>
+                          {item.status === 'accepted' ? '✓ Accepted' : item.status === 'rejected' ? '✗ Rejected' : '⏳ Pending'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                          {item.status !== 'accepted' && (
+                            <button
+                              onClick={() => setRfqQuoteModal({ open: true, rfqId: item.id, rfqProduct: item.product })}
+                              style={{ backgroundColor: '#c24438', color: '#fff', border: 'none', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                            >
+                              📤 Quote
+                            </button>
+                          )}
+                          {item.status === 'pending' && (
+                            <button
+                              onClick={() => handleRFQStatusUpdate(item.id, 'rejected')}
+                              style={{ backgroundColor: '#f3f4f6', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                            >
+                              ✗ Reject
+                            </button>
+                          )}
+                          {item.status === 'rejected' && (
+                            <button
+                              onClick={() => handleRFQStatusUpdate(item.id, 'pending')}
+                              style={{ backgroundColor: '#f3f4f6', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', cursor: 'pointer' }}
+                            >
+                              ↩ Undo
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   )) : (
-                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '30px' }}>No active RFQ requests listed.</td></tr>
+                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '30px' }}>No active RFQ requests listed.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -420,6 +489,48 @@ export default function SupplierDashboard() {
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px', paddingTop: '15px', borderTop: '1px solid #e5e7eb' }}>
                 <button type="button" onClick={() => setIsModalOpen(false)} style={{ flex: 1, background: '#fff', color: '#374151', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>Cancel</button>
                 <button type="submit" style={{ flex: 2, background: '#C24133', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><Plus size={18} /> {isEditMode ? 'Save Changes' : 'Submit Product'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── RFQ Quote Modal ── */}
+      {rfqQuoteModal.open && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: '#fff', padding: '30px', borderRadius: '16px', width: '480px', maxWidth: '95%', position: 'relative', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <button onClick={() => setRfqQuoteModal({ open: false, rfqId: null, rfqProduct: '' })} style={{ position: 'absolute', top: '15px', right: '15px', background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+            <h3 style={{ margin: '0 0 5px 0', color: '#111827', fontSize: '18px' }}>📤 Send Quotation</h3>
+            <p style={{ margin: '0 0 20px 0', color: '#6b7280', fontSize: '13px' }}>Product: <strong>{rfqQuoteModal.rfqProduct}</strong></p>
+            <form onSubmit={handleSendQuote} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>Unit Price (EGP)</label>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="e.g. 150"
+                  value={quoteUnitPrice}
+                  onChange={e => setQuoteUnitPrice(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', outline: 'none', fontSize: '14px', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>Delivery Days</label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 7"
+                  value={quoteDeliveryDays}
+                  onChange={e => setQuoteDeliveryDays(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', outline: 'none', fontSize: '14px', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+                <button type="button" onClick={() => setRfqQuoteModal({ open: false, rfqId: null, rfqProduct: '' })} style={{ flex: 1, padding: '11px', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', color: '#374151' }}>Cancel</button>
+                <button type="submit" style={{ flex: 2, padding: '11px', background: '#c24438', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', color: '#fff' }}>Send Quotation</button>
               </div>
             </form>
           </div>

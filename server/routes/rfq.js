@@ -1,6 +1,6 @@
 import express from 'express';
 import db from '../db/database.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -17,9 +17,9 @@ router.post('/', authenticateToken, (req, res) => {
     const budgetVal = parseFloat(budget ? budget.toString().replace(/\D/g, '') : '0') || 50000;
 
     const rfqResult = db.prepare(`
-      INSERT INTO rfq_requests (user_id, product, date_needed, quantity, budget, notes)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(req.user.id, product, date, qtyVal, budgetVal, notes || '');
+      INSERT INTO rfq_requests (user_id, product, date_needed, quantity, budget, notes, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(req.user.id, product, date, qtyVal, budgetVal, notes || '', 'pending');
 
     const rfqId = rfqResult.lastInsertRowid;
 
@@ -34,13 +34,10 @@ router.post('/', authenticateToken, (req, res) => {
     ];
 
     const insertResponseStmt = db.prepare(`
-      INSERT INTO rfq_responses (rfq_id, supplier_name, location, rating, reviews, unit_price, qty, total, delivery_days, delivery_date, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO rfq_responses (rfq_id, supplier_id, supplier_name, location, rating, reviews, unit_price, qty, total, delivery_days, delivery_date, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    // Target delivery date is date_needed minus a few days, or custom calculated
-    const targetDate = new Date();
-    
     for (const supplier of bidSuppliers) {
       const calculatedUnit = Math.round((baseUnitPrice > 0 ? baseUnitPrice * supplier.unitPriceFactor : 100 * supplier.unitPriceFactor) * 100) / 100;
       const total = Math.round(calculatedUnit * qtyVal * 100) / 100;
@@ -51,6 +48,7 @@ router.post('/', authenticateToken, (req, res) => {
 
       insertResponseStmt.run(
         rfqId,
+        null, // auto-generated bids have no real supplier user
         supplier.name,
         supplier.location,
         supplier.rating,
@@ -71,13 +69,24 @@ router.post('/', authenticateToken, (req, res) => {
   }
 });
 
-// GET /api/rfq — Get all RFQs for the current user and their responses
+// GET /api/rfq — Get all RFQs based on role
 router.get('/', authenticateToken, (req, res) => {
   try {
-    // If supplier, show incoming RFQs (all requests)
+    // If supplier, show all incoming RFQs with status info
     if (req.user.role === 'supplier') {
       const rfqs = db.prepare(`
         SELECT r.*, u.name as buyer_name, u.avatar as buyer_avatar
+        FROM rfq_requests r
+        JOIN users u ON r.user_id = u.id
+        ORDER BY r.created_at DESC
+      `).all();
+      return res.json(rfqs);
+    }
+
+    // Admin: see all RFQs
+    if (req.user.role === 'admin') {
+      const rfqs = db.prepare(`
+        SELECT r.*, u.name as buyer_name
         FROM rfq_requests r
         JOIN users u ON r.user_id = u.id
         ORDER BY r.created_at DESC
@@ -98,7 +107,6 @@ router.get('/', authenticateToken, (req, res) => {
       const rfqResponses = db.prepare('SELECT * FROM rfq_responses WHERE rfq_id = ?').all(rfq.id);
       
       for (const resp of rfqResponses) {
-        // Map to exact frontend names
         const totalDiscount = resp.unit_price < (rfq.budget / rfq.quantity)
           ? `↓ ${Math.round((1 - (resp.unit_price / (rfq.budget / rfq.quantity))) * 100)}% lower`
           : '';
@@ -130,8 +138,31 @@ router.get('/', authenticateToken, (req, res) => {
   }
 });
 
+// PUT /api/rfq/:id/status — Supplier: accept or reject an RFQ
+router.put('/:id/status', authenticateToken, requireRole('supplier', 'admin'), (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!status || !['accepted', 'rejected', 'pending'].includes(status)) {
+    return res.status(400).json({ message: 'Valid status required: accepted, rejected, or pending' });
+  }
+
+  try {
+    const rfq = db.prepare('SELECT * FROM rfq_requests WHERE id = ?').get(id);
+    if (!rfq) {
+      return res.status(404).json({ message: 'RFQ not found' });
+    }
+
+    db.prepare('UPDATE rfq_requests SET status = ? WHERE id = ?').run(status, id);
+    res.json({ message: `RFQ status updated to ${status}` });
+  } catch (error) {
+    console.error('Update RFQ status error:', error);
+    res.status(500).json({ message: 'Server error updating RFQ status' });
+  }
+});
+
 // POST /api/rfq/:id/respond — Supplier: respond manually to an RFQ
-router.post('/:id/respond', authenticateToken, (req, res) => {
+router.post('/:id/respond', authenticateToken, requireRole('supplier', 'admin'), (req, res) => {
   const { id } = req.params;
   const { unitPrice, deliveryDays } = req.body;
 
@@ -156,10 +187,11 @@ router.post('/:id/respond', authenticateToken, (req, res) => {
     const deliveryDateStr = deliveryDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
     db.prepare(`
-      INSERT INTO rfq_responses (rfq_id, supplier_name, location, rating, reviews, unit_price, qty, total, delivery_days, delivery_date, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO rfq_responses (rfq_id, supplier_id, supplier_name, location, rating, reviews, unit_price, qty, total, delivery_days, delivery_date, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id,
+      req.user.id,
       supplier.name,
       supplier.phone ? 'Egypt' : 'Local',
       5.0,
@@ -171,6 +203,9 @@ router.post('/:id/respond', authenticateToken, (req, res) => {
       deliveryDateStr,
       'pending'
     );
+
+    // Mark RFQ as accepted by this supplier
+    db.prepare('UPDATE rfq_requests SET status = ? WHERE id = ?').run('accepted', id);
 
     res.status(201).json({ message: 'RFQ response sent successfully!' });
   } catch (error) {
@@ -196,13 +231,7 @@ router.put('/response/:responseId/confirm', authenticateToken, (req, res) => {
     // Fetch the RFQ request name
     const rfq = db.prepare('SELECT * FROM rfq_requests WHERE id = ?').get(response.rfq_id);
 
-    // Insert into user's cart automatically!
-    const existing = db.prepare('SELECT * FROM cart_items WHERE user_id = ? AND product_id = ?').get(req.user.id, response.id);
-    
-    // We can simulate an RFQ product by adding it to cart.
-    // Wait, in database schema we have a foreign key to `products` for cart items.
-    // So let's insert a temporary RFQ product in the products table!
-    // This is super clever because it doesn't break foreign key constraints!
+    // Insert a temporary RFQ product into the products table
     const productResult = db.prepare(`
       INSERT INTO products (name, price, category, description, image, rating, reviews, viewed_count, moq, unit_price, status, supplier_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -218,12 +247,12 @@ router.put('/response/:responseId/confirm', authenticateToken, (req, res) => {
       `${response.qty} pcs`,
       `${response.unit_price} EGP`,
       'Approved',
-      null // custom RFQ
+      response.supplier_id || null
     );
 
     const tempProductId = productResult.lastInsertRowid;
 
-    // Now insert this product into `cart_items`
+    // Insert into cart_items
     db.prepare('INSERT INTO cart_items (user_id, product_id, quantity) VALUES (?, ?, ?)')
       .run(req.user.id, tempProductId, response.qty);
 

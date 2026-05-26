@@ -1,27 +1,27 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCart } from '../App';
+import { useCart, useAuth } from '../App';
 import { ordersAPI } from '../api/orders';
 import './Checkout.css';
 
 export default function Checkout() {
   const navigate = useNavigate();
   const { cart, clearCart } = useCart();
+  const { user } = useAuth();
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   // ── Step control ────────────────────────────────
-  // 'details' → fill address/receiver/instructions
-  // 'payment' → collect payment info
-  // 'done'    → success
   const [step, setStep] = useState('details');
 
-  // 1. Receivers list
-  const [receivers, setReceivers] = useState([
-    { id: 'osama', name: 'Osama Al-korashy', phone: '+20 100 100 2078' }
-  ]);
-  const [selectedReceiver, setSelectedReceiver] = useState('osama');
+  // 1. Receivers list — initialized from logged-in user
+  const [receivers, setReceivers] = useState(() => {
+    const defaultName = user?.name || 'Receiver';
+    const defaultPhone = user?.phone || '';
+    return [{ id: 'default_user', name: defaultName, phone: defaultPhone }];
+  });
+  const [selectedReceiver, setSelectedReceiver] = useState('default_user');
 
   // 2. Add receiver state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -117,6 +117,15 @@ export default function Checkout() {
     const receiverObj = receivers.find(r => r.id === selectedReceiver);
     if (!receiverObj || !address.trim()) {
       setError('Please fill in your address and select a receiver.');
+      return;
+    }
+    // MOQ Validation
+    const moqViolations = cart.filter(item => {
+      const moqNum = parseInt((item.moq || '1').toString().replace(/\D/g, '')) || 1;
+      return (item.quantity || 1) < moqNum;
+    });
+    if (moqViolations.length > 0) {
+      setError(`Minimum order quantity not met for: ${moqViolations.map(i => i.name).join(', ')}. Please update quantities in your cart.`);
       return;
     }
     setError('');

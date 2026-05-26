@@ -7,5 +7,7 @@ export const rfqAPI = {
   
   respondToRFQ: (rfqId, responseData) => client.post(`/api/rfq/${rfqId}/respond`, responseData),
   
+  updateRFQStatus: (rfqId, status) => client.put(`/api/rfq/${rfqId}/status`, { status }),
+  
   confirmRFQResponse: (responseId) => client.put(`/api/rfq/response/${responseId}/confirm`)
 };

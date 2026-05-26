@@ -238,4 +238,111 @@ router.post('/social-login', (req, res) => {
   }
 });
 
+// POST /api/auth/forgot-password — Generate a 6-digit OTP and store it
+router.post('/forgot-password', (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ message: 'Email is required' });
+
+  try {
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    if (!user) {
+      // Return success even if email not found (security best practice)
+      return res.json({ message: 'If this email exists, an OTP has been sent.' });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const salt = bcrypt.genSaltSync(10);
+    const otpHash = bcrypt.hashSync(otp, salt);
+    const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
+
+    db.prepare('UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE email = ?')
+      .run(otpHash, expiry, email);
+
+    // In production, send via email. For now, log to server console.
+    console.log(`🔑 Password Reset OTP for ${email}: ${otp}`);
+
+    res.json({ message: 'OTP sent successfully. Check your email (or server logs in dev mode).', devOtp: process.env.NODE_ENV !== 'production' ? otp : undefined });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Server error sending OTP' });
+  }
+});
+
+// POST /api/auth/verify-otp — Verify OTP without resetting password
+router.post('/verify-otp', (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required' });
+
+  try {
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    if (!user || !user.reset_token || !user.reset_token_expiry) {
+      return res.status(400).json({ message: 'No active password reset request found' });
+    }
+
+    // Check expiry
+    if (new Date() > new Date(user.reset_token_expiry)) {
+      db.prepare('UPDATE users SET reset_token = NULL, reset_token_expiry = NULL WHERE email = ?').run(email);
+      return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+    }
+
+    // Verify OTP hash
+    const isValid = bcrypt.compareSync(otp, user.reset_token);
+    if (!isValid) {
+      return res.status(400).json({ message: 'Invalid OTP. Please try again.' });
+    }
+
+    res.json({ message: 'OTP verified successfully' });
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ message: 'Server error verifying OTP' });
+  }
+});
+
+// POST /api/auth/reset-password — Hash and save the new password
+router.post('/reset-password', (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword) {
+    return res.status(400).json({ message: 'Email, OTP, and new password are required' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ message: 'Password must be at least 6 characters' });
+  }
+
+  try {
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    if (!user || !user.reset_token || !user.reset_token_expiry) {
+      return res.status(400).json({ message: 'No active password reset request found' });
+    }
+
+    // Check expiry
+    if (new Date() > new Date(user.reset_token_expiry)) {
+      db.prepare('UPDATE users SET reset_token = NULL, reset_token_expiry = NULL WHERE email = ?').run(email);
+      return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+    }
+
+    // Verify OTP
+    const isValid = bcrypt.compareSync(otp, user.reset_token);
+    if (!isValid) {
+      return res.status(400).json({ message: 'Invalid OTP. Please try again.' });
+    }
+
+    // Hash new password and update
+    const salt = bcrypt.genSaltSync(10);
+    const newHash = bcrypt.hashSync(newPassword, salt);
+
+    db.prepare(`
+      UPDATE users 
+      SET password_hash = ?, reset_token = NULL, reset_token_expiry = NULL 
+      WHERE email = ?
+    `).run(newHash, email);
+
+    console.log(`✅ Password successfully reset for: ${email}`);
+    res.json({ message: 'Password reset successfully! You can now login with your new password.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Server error resetting password' });
+  }
+});
+
 export default router;

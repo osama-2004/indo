@@ -95,9 +95,19 @@ export function initDB() {
       name TEXT NOT NULL,
       phone TEXT,
       avatar TEXT,
+      reset_token TEXT,
+      reset_token_expiry DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Migration: add reset_token columns if they don't exist (for existing DBs)
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN reset_token TEXT`);
+  } catch (_) { /* already exists */ }
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN reset_token_expiry DATETIME`);
+  } catch (_) { /* already exists */ }
 
   // 2. Products Table
   db.exec(`
@@ -178,16 +188,23 @@ export function initDB() {
       quantity INTEGER NOT NULL,
       budget REAL,
       notes TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )
   `);
+
+  // Migration: add status column if it doesn't exist
+  try {
+    db.exec(`ALTER TABLE rfq_requests ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'`);
+  } catch (_) { /* already exists */ }
 
   // 7. RFQ Responses Table
   db.exec(`
     CREATE TABLE IF NOT EXISTS rfq_responses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       rfq_id INTEGER NOT NULL,
+      supplier_id INTEGER,
       supplier_name TEXT NOT NULL,
       location TEXT NOT NULL,
       rating REAL DEFAULT 5,
@@ -197,10 +214,16 @@ export function initDB() {
       total REAL NOT NULL,
       delivery_days INTEGER NOT NULL,
       delivery_date TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'Pending',
-      FOREIGN KEY (rfq_id) REFERENCES rfq_requests(id) ON DELETE CASCADE
+      status TEXT NOT NULL DEFAULT 'pending',
+      FOREIGN KEY (rfq_id) REFERENCES rfq_requests(id) ON DELETE CASCADE,
+      FOREIGN KEY (supplier_id) REFERENCES users(id) ON DELETE SET NULL
     )
   `);
+
+  // Migration: add supplier_id to rfq_responses if not exists
+  try {
+    db.exec(`ALTER TABLE rfq_responses ADD COLUMN supplier_id INTEGER`);
+  } catch (_) { /* already exists */ }
 
   // 8. Complaints Table
   db.exec(`
@@ -225,6 +248,23 @@ export function initDB() {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
       UNIQUE(user_id, product_id)
+    )
+  `);
+
+  // 10. Sample Requests Table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sample_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      buyer_id INTEGER NOT NULL,
+      supplier_id INTEGER,
+      product_id INTEGER NOT NULL,
+      product_name TEXT NOT NULL,
+      message TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (supplier_id) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
     )
   `);
 

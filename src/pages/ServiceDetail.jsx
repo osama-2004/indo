@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useFavorites, useCart } from '../App'; 
+import { useFavorites, useCart, useAuth } from '../App'; 
 import { productsAPI } from '../api/products';
+import { samplesAPI } from '../api/samples';
 import './ServiceDetail.css'
 
 const getProductImage = (imageName) => {
@@ -30,12 +31,18 @@ export default function ServiceDetail() {
   
   const { toggleFavorite, isFavorite } = useFavorites();
   const { addToCart } = useCart();
+  const { user, isLoggedIn } = useAuth();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('reviews');
   const [qty, setQty] = useState(1); 
   const [visibleReviews, setVisibleReviews] = useState(3);
+
+  // Sample request state
+  const [sampleMessage, setSampleMessage] = useState('');
+  const [sampleSubmitting, setSampleSubmitting] = useState(false);
+  const [sampleSuccess, setSampleSuccess] = useState('');
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -63,12 +70,39 @@ export default function ServiceDetail() {
 
   const handleAddToCart = async () => {
     if (!product) return;
+    // MOQ enforcement
+    const moqNum = parseInt((product.moq || '1').toString().replace(/\D/g, '')) || 1;
+    if (qty < moqNum) {
+      alert(`Minimum order quantity (MOQ) for this product is ${moqNum} units. Please increase your quantity.`);
+      setQty(moqNum);
+      return;
+    }
     try {
       await addToCart(product, qty);
       alert(`🛒 Added ${qty}x ${product.name} to your cart successfully!`);
       navigate('/cart');
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleSampleRequest = async (e) => {
+    e.preventDefault();
+    if (!isLoggedIn) {
+      alert('Please log in to request a sample.');
+      navigate('/login');
+      return;
+    }
+    setSampleSubmitting(true);
+    setSampleSuccess('');
+    try {
+      await samplesAPI.requestSample(product.id, sampleMessage);
+      setSampleSuccess('✅ Sample request submitted! The supplier will review your request soon.');
+      setSampleMessage('');
+    } catch (err) {
+      setSampleSuccess('❌ ' + (err.message || 'Failed to submit sample request.'));
+    } finally {
+      setSampleSubmitting(false);
     }
   };
 
@@ -167,13 +201,19 @@ export default function ServiceDetail() {
             </ul>
           </section>
 
-          {/* Action Row Component: Dynamic Order Controllers (Quantity counters, CART, RFQ buttons) */}
+          {/* Action Row Component: Dynamic Order Controllers */}
           <div className="action-row">
             <div className="qty-selector">
-              <button onClick={() => setQty(Math.max(1, qty - 1))}>-</button>
+              <button onClick={() => {
+                const moqNum = parseInt((product.moq || '1').toString().replace(/\D/g, '')) || 1;
+                setQty(Math.max(moqNum, qty - 1));
+              }}>-</button>
               <span>{qty}</span>
               <button onClick={() => setQty(qty + 1)}>+</button>
             </div>
+            {product.moq && (
+              <span style={{ fontSize: '11px', color: '#6b7280', alignSelf: 'center' }}>MOQ: {product.moq}</span>
+            )}
             <button className="btn-add-cart" onClick={handleAddToCart}>Add to cart</button>
             <button className="btn-rfq" onClick={() => navigate('/rfq')}>RFQ</button>
           </div>
@@ -245,7 +285,44 @@ export default function ServiceDetail() {
             
             /* Sub-Panel Content Block Module: Corporate Sample Request forms panel fallback */
             <div className="sample-request-area">
-              <p>Sample request content goes here...</p>
+              <h4 style={{ color: '#c24438', marginBottom: '8px' }}>Request a Product Sample</h4>
+              <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>Interested in testing this product before placing a bulk order? Send a sample request to the supplier.</p>
+              {sampleSuccess && (
+                <div style={{ padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', backgroundColor: sampleSuccess.startsWith('✅') ? '#f0fdf4' : '#fef2f2', color: sampleSuccess.startsWith('✅') ? '#15803d' : '#b91c1c', border: `1px solid ${sampleSuccess.startsWith('✅') ? '#86efac' : '#fca5a5'}`, fontSize: '14px' }}>
+                  {sampleSuccess}
+                </div>
+              )}
+              {isLoggedIn ? (
+                <form onSubmit={handleSampleRequest} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>Product</label>
+                    <input type="text" value={product?.name} disabled style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e5e7eb', backgroundColor: '#f9fafb', color: '#6b7280', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>Message to Supplier <span style={{ color: '#9ca3af', fontWeight: 'normal' }}>(Optional)</span></label>
+                    <textarea
+                      placeholder="Describe what you'd like to test, your use case, or any specific requirements..."
+                      value={sampleMessage}
+                      onChange={e => setSampleMessage(e.target.value)}
+                      rows={4}
+                      disabled={sampleSubmitting}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #d1d5db', resize: 'vertical', fontFamily: 'inherit', fontSize: '14px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={sampleSubmitting}
+                    style={{ backgroundColor: '#c24438', color: '#fff', border: 'none', borderRadius: '30px', padding: '12px 35px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', opacity: sampleSubmitting ? 0.7 : 1, alignSelf: 'flex-start' }}
+                  >
+                    {sampleSubmitting ? 'Submitting...' : '📦 Submit Sample Request'}
+                  </button>
+                </form>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '30px', background: '#f9fafb', borderRadius: '12px', border: '1px dashed #d1d5db' }}>
+                  <p style={{ color: '#6b7280', marginBottom: '15px' }}>Please log in to request a sample.</p>
+                  <button onClick={() => navigate('/login')} style={{ backgroundColor: '#c24438', color: '#fff', border: 'none', borderRadius: '30px', padding: '10px 25px', cursor: 'pointer', fontWeight: 'bold' }}>Log In</button>
+                </div>
+              )}
             </div>
           )}
         </div>
