@@ -4,6 +4,7 @@ import { useFavorites, useCart, useAuth } from '../App';
 import { authAPI } from '../api/auth';
 import { favoritesAPI } from '../api/favorites';
 import { ordersAPI } from '../api/orders';
+import { samplesAPI } from '../api/samples';
 import './Profile.css'
 
 export default function Profile() {
@@ -17,8 +18,10 @@ export default function Profile() {
 
   const [wishlistProducts, setWishlistProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [samples, setSamples] = useState([]);
   const [loadingWishlist, setLoadingWishlist] = useState(false);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [loadingSamples, setLoadingSamples] = useState(false);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedUser, setEditedUser] = useState({ name: '', email: '', phone: '' });
@@ -60,11 +63,26 @@ export default function Profile() {
     }
   };
 
+  // Load samples
+  const loadSamples = async () => {
+    setLoadingSamples(true);
+    try {
+      const data = await samplesAPI.getSamples();
+      setSamples(data);
+    } catch (err) {
+      console.error('Failed loading samples:', err);
+    } finally {
+      setLoadingSamples(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'wishlist') {
       loadWishlist();
     } else if (activeTab === 'orders') {
       loadOrders();
+    } else if (activeTab === 'samples') {
+      loadSamples();
     }
   }, [activeTab]);
 
@@ -234,6 +252,13 @@ export default function Profile() {
               onClick={() => setActiveTab('wishlist')}
             >
               <span className="icon">❤️</span> Wishlist <span className="arrow">›</span>
+            </button>
+            
+            <button 
+              className={`nav-item-btn ${activeTab === 'samples' ? 'active' : ''}`} 
+              onClick={() => setActiveTab('samples')}
+            >
+              <span className="icon">📦</span> My Samples <span className="arrow">›</span>
             </button>
             
             <div className="nav-divider"></div>
@@ -418,6 +443,54 @@ export default function Profile() {
                         <div style={{ fontWeight: '800', fontSize: '16px', color: '#111827' }}>
                           Total: <span style={{ color: '#c24438' }}>EGP {order.total.toLocaleString()}</span>
                         </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'samples' && (
+            <div className="wishlist-tab-content">
+              <div className="wishlist-header">
+                <h2>My Sample Requests</h2>
+              </div>
+              {loadingSamples ? (
+                <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280', fontSize: '16px' }}>Loading sample requests...</div>
+              ) : samples.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px', color: '#9ca3af', border: '1px dashed #d1d5db', borderRadius: '12px', backgroundColor: '#fff' }}>
+                  <h3>No sample requests yet.</h3>
+                  <p style={{ fontSize: '14px', marginBottom: '15px' }}>Browse products and click "Sample Request" to request a free sample.</p>
+                  <Link to="/services" className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none' }}>Browse Products</Link>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {samples.map(sample => (
+                    <div key={sample.id} style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '20px', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', gap: '15px', alignItems: 'flex-start' }}>
+                      <div style={{ width: '55px', height: '55px', borderRadius: '10px', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0 }}>📦</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+                          <div>
+                            <h4 style={{ margin: '0 0 4px 0', color: '#111827', fontSize: '16px' }}>{sample.product_name}</h4>
+                            <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>Submitted: {new Date(sample.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                          </div>
+                          <span style={{
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            backgroundColor: sample.status === 'approved' ? '#dcfce7' : sample.status === 'rejected' ? '#fee2e2' : '#fef3c7',
+                            color: sample.status === 'approved' ? '#15803d' : sample.status === 'rejected' ? '#b91c1c' : '#92400e'
+                          }}>
+                            {sample.status === 'approved' ? '✓ Approved' : sample.status === 'rejected' ? '✗ Rejected' : '⏳ Pending Review'}
+                          </span>
+                        </div>
+                        {sample.message && (
+                          <p style={{ margin: '10px 0 0 0', fontSize: '13px', color: '#6b7280', backgroundColor: '#f9fafb', padding: '8px 12px', borderRadius: '6px', borderLeft: '3px solid #d1d5db' }}>
+                            "{sample.message}"
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
