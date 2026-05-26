@@ -1,16 +1,60 @@
-# React + Vite
+# 🚀 IndusConnect B2B Marketplace
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+IndusConnect is a full-stack, responsive B2B platform connecting startups, manufacturers, suppliers, and traders in a secure, unified network. It provides custom catalog features, RFQ (Request for Quote) management, shopping cart operations, complaints panels, and role-based user dashboards (buyer, supplier, administrator).
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠️ Technology Stack
+*   **Frontend:** React (Vite, React Router HashRouter, Lucide Icons, Vanilla CSS Design System)
+*   **Backend:** Node.js (Express API server, JWT Authentication, CORS enabled)
+*   **Database:** SQLite (local binary file, auto-generated schema, and self-seeding sample database)
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## ⚡ Deployment & Hosting (Globally Live)
 
-## Expanding the ESLint configuration
+You can host both the frontend and the database server **together as a unified service**. This simplifies CORS setup and keeps the database connected out-of-the-box.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Option A: Deploy to Railway (Recommended)
+
+Nixpacks will build the React app and start the database server automatically.
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.com/new/template?template=https://github.com/osama-2004/indo)
+
+1. Click the **Deploy on Railway** button above.
+2. Link your GitHub repository.
+3. In variables, define a `JWT_SECRET` (e.g. `my-secure-key`).
+4. Click **Deploy**. Your app will be live globally!
+
+### Option B: Deploy to Render
+
+Render will read the `render.yaml` blueprint and deploy the unified app instantly.
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/osama-2004/indo)
+
+1. Click the **Deploy to Render** button above.
+2. Render will automatically parse the blueprint settings.
+3. Provide a name and launch the service.
+
+---
+
+## 💻 Local Development Setup
+
+To run both frontend and backend concurrently locally:
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/osama-2004/indo.git
+   cd indo
+   ```
+2. Install root and server dependencies:
+   ```bash
+   npm install
+   cd server && npm install
+   cd ..
+   ```
+3. Run the development server (runs both frontend at `5173` and backend at `5000` concurrently):
+   ```bash
+   npm run dev:full
+   ```
+
