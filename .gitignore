@@ -11,9 +11,9 @@ lerna-debug.log*
 node_modules/
 **/node_modules/
 
-# Production builds
-dist/
-**/dist/
+# Production builds — committed to git for reliable Railway deployment
+# dist/
+# **/dist/
 dist-ssr
 *.local
 
