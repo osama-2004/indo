@@ -18,6 +18,7 @@ export default function Services() {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [allProducts, setAllProducts] = useState([]);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   
   const productsPerPage = 9; 
 
@@ -143,8 +144,20 @@ export default function Services() {
           ========================================== */}
       <div className="services-content-layout container" id="products-grid-start">
         
+        {/* Mobile Filter Trigger Button */}
+        <div className="mobile-filter-trigger">
+          <button className="mobile-filter-btn" onClick={() => setIsMobileFilterOpen(true)}>
+            <Boxes size={20} /> Filter Options
+          </button>
+        </div>
+
         {/* Sidebar Filter Controls */}
-        <aside className="filter-sidebar">
+        <aside className={`filter-sidebar ${isMobileFilterOpen ? 'open-mobile' : ''}`}>
+          <div className="close-filter-mobile" onClick={() => setIsMobileFilterOpen(false)}>
+            <Tags size={24} /> {/* Using an available icon for close or just text */}
+            <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>Close</span>
+          </div>
+
           <div className="filter-header-row">
             <h2 className="filter-title">Filter Options</h2>
             <button className="clear-link" onClick={clearFilters}>Clear all</button>
@@ -202,7 +215,13 @@ export default function Services() {
               </label>
             ))}
           </div>
+
+          <button className="apply-filter-mobile" onClick={() => setIsMobileFilterOpen(false)}>
+            Apply Filters
+          </button>
         </aside>
+
+        {isMobileFilterOpen && <div className="filter-overlay" onClick={() => setIsMobileFilterOpen(false)}></div>}
 
         {/* ==========================================
             3. PRODUCTS DISPLAY MAIN AREA

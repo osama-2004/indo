@@ -648,3 +648,25 @@
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   border: 1px solid #e5e7eb;
 }
+
+/* ==========================================
+   Responsive Design
+   ========================================== */
+@media (max-width: 768px) {
+  .auth-card {
+    flex-direction: column;
+    justify-content: center;
+    gap: 0;
+  }
+  .auth-image-section {
+    display: none;
+  }
+  .auth-form-section {
+    max-width: 100%;
+    width: 100%;
+    padding: 20px;
+  }
+  .image-wrapper {
+    display: none;
+  }
+}

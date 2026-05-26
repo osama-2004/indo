@@ -193,13 +193,15 @@
 }
 
 .supplier-dashboard .card-panel {
-  width: 875px;
-  height: 620px;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 620px;
   background-color: #fff;
   border-radius: 16px;
   padding: 30px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .supplier-dashboard .panel-header {

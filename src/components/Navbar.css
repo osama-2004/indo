@@ -130,8 +130,9 @@
 
 .search-modal {
   background-color: #ffffff;
-  width: 1218px;
-  height: 500px;
+  width: 95%;
+  height: auto;
+  min-height: 300px;
   max-width: 680px;
   border-radius: 16px;
   padding: 30px;

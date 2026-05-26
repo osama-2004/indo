@@ -91,6 +91,22 @@ input, select, textarea {
   padding: 0 40px;
 }
 
+@media (max-width: 768px) {
+  .container {
+    padding: 0 16px;
+  }
+  .container-wide {
+    padding: 0 20px;
+  }
+  .section-title {
+    font-size: 26px;
+  }
+  .section-subtitle {
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+}
+
 .btn-primary {
   background: var(--primary);
   color: var(--white);

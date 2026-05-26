@@ -115,3 +115,10 @@
     padding: 20px 24px;
   }
 }
+
+@media (max-width: 480px) {
+  .footer-cols {
+    flex-direction: column;
+    gap: 24px;
+  }
+}
