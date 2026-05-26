@@ -42,4 +42,6 @@ server/uploads/*
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+# Netlify
+.netlify/
+
