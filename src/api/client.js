@@ -31,8 +31,9 @@ async function request(endpoint, options = {}) {
       localStorage.removeItem('indus_user');
       window.dispatchEvent(new Event('authChanged'));
       // Optional: redirect to login if not already there
-      if (!window.location.pathname.endsWith('/login') && !window.location.pathname.endsWith('/signup')) {
-        window.location.href = '/login';
+      const currentPath = window.location.pathname + window.location.hash;
+      if (!currentPath.includes('/login') && !currentPath.includes('/signup')) {
+        window.location.hash = '/login';
       }
       const errData = await response.json().catch(() => ({}));
       throw new Error(errData.message || 'Unauthorized access');
