@@ -18,6 +18,7 @@ export function ForgotPassword() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [otpDisplay, setOtpDisplay] = useState(''); // shown on-screen when no email service
 
   const otpRefs = useRef([]);
 
@@ -39,13 +40,14 @@ export function ForgotPassword() {
     setError('');
     try {
       const res = await authAPI.forgotPassword(email.trim());
-      setSuccessMsg(res.message || 'OTP sent!');
-      // In dev mode, auto-fill OTP if server returns it
-      if (res.devOtp) {
-        const otpDigits = res.devOtp.toString().split('').slice(0, 6);
+      // Server returns otp directly since no email service is configured yet
+      const receivedOtp = res.otp || res.devOtp;
+      if (receivedOtp) {
+        const otpDigits = receivedOtp.toString().split('').slice(0, 6);
         setOtp(otpDigits);
-        console.log('🔑 Dev OTP auto-filled:', res.devOtp);
+        setOtpDisplay(receivedOtp.toString());
       }
+      setSuccessMsg(res.message || 'OTP ready!');
       setStep('otp');
       setTimer(59);
     } catch (err) {
@@ -127,12 +129,14 @@ export function ForgotPassword() {
     setError('');
     try {
       const res = await authAPI.forgotPassword(email.trim());
-      if (res.devOtp) {
-        const otpDigits = res.devOtp.toString().split('').slice(0, 6);
+      const receivedOtp = res.otp || res.devOtp;
+      if (receivedOtp) {
+        const otpDigits = receivedOtp.toString().split('').slice(0, 6);
         setOtp(otpDigits);
+        setOtpDisplay(receivedOtp.toString());
       }
       setTimer(59);
-      setSuccessMsg('New OTP sent!');
+      setSuccessMsg('New OTP ready!');
     } catch (err) {
       setError(err.message || 'Failed to resend OTP.');
     } finally {
@@ -214,6 +218,30 @@ export function ForgotPassword() {
             </div>
 
             <form onSubmit={handleOtpSubmit} className="reset-form-box">
+              {/* OTP display box — shown when no email service is configured */}
+              {otpDisplay && (
+                <div style={{
+                  background: 'linear-gradient(135deg, #fef3c7, #fffbeb)',
+                  border: '2px solid #f59e0b',
+                  borderRadius: '12px',
+                  padding: '16px 20px',
+                  marginBottom: '20px',
+                  textAlign: 'center'
+                }}>
+                  <p style={{ margin: '0 0 6px 0', fontSize: '12px', color: '#92400e', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>⚠️ Your OTP Code (no email service configured)</p>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '8px', color: '#92400e', fontFamily: 'monospace' }}>{otpDisplay}</span>
+                    <button
+                      type="button"
+                      onClick={() => { navigator.clipboard.writeText(otpDisplay); }}
+                      style={{ background: '#f59e0b', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 'bold', color: '#fff', cursor: 'pointer' }}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '11px', color: '#b45309' }}>Already auto-filled below ↓ — just click Verify OTP</p>
+                </div>
+              )}
               <div className="otp-inputs-row">
                 {otp.map((data, index) => (
                   <input

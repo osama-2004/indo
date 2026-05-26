@@ -259,10 +259,12 @@ router.post('/forgot-password', (req, res) => {
     db.prepare('UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE email = ?')
       .run(otpHash, expiry, email);
 
-    // In production, send via email. For now, log to server console.
+    // Log OTP to server console
     console.log(`🔑 Password Reset OTP for ${email}: ${otp}`);
 
-    res.json({ message: 'OTP sent successfully. Check your email (or server logs in dev mode).', devOtp: process.env.NODE_ENV !== 'production' ? otp : undefined });
+    // Always return OTP in response (no email service configured yet)
+    // In production with email: remove 'otp' from response and send via SMTP
+    res.json({ message: 'Your OTP code is ready. Copy it from the screen below.', otp });
   } catch (error) {
     console.error('Forgot password error:', error);
     res.status(500).json({ message: 'Server error sending OTP' });
