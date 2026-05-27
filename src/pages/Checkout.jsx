@@ -4,6 +4,22 @@ import { useCart, useAuth } from '../App';
 import { ordersAPI } from '../api/orders';
 import './Checkout.css';
 
+const VisaLogo = () => (
+  <svg viewBox="0 0 36 24" width="36" height="24" className="payment-svg-logo visa" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+    <rect width="36" height="24" rx="4" fill="#1434CB"/>
+    <path d="M12.5 16h1.8l1.1-7h-1.8l-1.1 7zm5.5-7h-1.7c-.5 0-.9.3-1.1.8l-2.7 6.2h1.9l.4-1h2.3l.2 1h1.7l-1-7zm-2.8 4.7l.8-2.2.5 2.2h-1.3zm8.3-7h-1.8l-1.1 4.7-.8-4c-.2-.7-.7-.7-1.3-.7h-2l-.1.4c.8.2 1.6.5 2.1.8l1.6 5.8h1.9l2.8-7zm4.3 0h-1.5c-.5 0-.8.3-.8.8l-.2.9c.4.2.8.3 1.3.5.8.3 1 .5 1 .8 0 .4-.5.6-.9.6-.6 0-1-.1-1.5-.3l-.2-.1-.2 1.3c.4.2 1.1.3 1.8.3 1.6 0 2.6-.8 2.6-2 0-1-.6-1.5-1.9-2.1-.6-.3-1-.6-1-1 0-.3.4-.6 1.2-.6.5 0 .8.1 1.2.2l.2.1.2-1.3z" fill="#FFF"/>
+  </svg>
+);
+
+const MastercardLogo = () => (
+  <svg viewBox="0 0 36 24" width="36" height="24" className="payment-svg-logo mastercard" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+    <rect width="36" height="24" rx="4" fill="#0A0A0A"/>
+    <circle cx="15.5" cy="12" r="7" fill="#EB001B"/>
+    <circle cx="20.5" cy="12" r="7" fill="#F79E1B" opacity="0.85"/>
+    <path d="M18 12a6.97 6.97 0 0 1 2.5-5.38 6.97 6.97 0 0 1-2.5 10.76A6.97 6.97 0 0 1 18 12z" fill="#FF5F00"/>
+  </svg>
+);
+
 export default function Checkout() {
   const navigate = useNavigate();
   const { cart, clearCart } = useCart();
@@ -435,10 +451,10 @@ export default function Checkout() {
                   <label className="payment-item">
                     <input type="radio" name="pay" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} disabled={loading} />
                     <span className="custom-radio"></span>
-                    <span>Credit / Debit Card</span>
+                    <span>💳 Credit / Debit Card</span>
                     <div className="card-logos">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="visa" />
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="mastercard" />
+                      <VisaLogo />
+                      <MastercardLogo />
                     </div>
                   </label>
                   <label className="payment-item">
@@ -484,10 +500,10 @@ export default function Checkout() {
                   <label className="payment-item">
                     <input type="radio" name="pay2" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} disabled={loading} />
                     <span className="custom-radio"></span>
-                    <span>Credit / Debit Card</span>
+                    <span>💳 Credit / Debit Card</span>
                     <div className="card-logos">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="visa" />
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="mastercard" />
+                      <VisaLogo />
+                      <MastercardLogo />
                     </div>
                   </label>
                   <label className="payment-item">

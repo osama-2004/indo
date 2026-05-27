@@ -742,11 +742,202 @@ input[type="radio"]:checked + .custom-radio::after {
 
 .btn-continue:hover { transform: translateY(-2px); }
 
-/* ── Responsive ───────────────────────────────────── */
-@media (max-width: 768px) {
-  .checkout-wrapper { padding: 24px 5%; }
-  .checkout-content { flex-direction: column; }
-  .receiver-grid { grid-template-columns: 1fr; }
-  .payment-summary { position: static; }
-  .success-card { width: 90%; padding: 36px 24px; }
+/* ── Payment Logo SVGs ────────────────────────────── */
+.card-logos {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 8px;
+}
+
+.payment-svg-logo {
+  height: 24px;
+  width: auto;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.payment-svg-logo:hover {
+  transform: translateY(-1px) scale(1.05);
+}
+
+/* ── Interactive Polishes & Transitions ────────────── */
+.receiver-box {
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s ease-in-out;
+}
+
+.receiver-box:active {
+  transform: scale(0.98);
+}
+
+.payment-item, .radio-item {
+  transition: border-color 0.2s, background-color 0.2s, transform 0.15s ease;
+}
+
+.payment-item:active, .radio-item:active {
+  transform: scale(0.99);
+}
+
+/* ── Responsive Grid & Screen Size Optimization ───── */
+
+/* Desktop & Laptop HD (1440px+) */
+@media (min-width: 1441px) {
+  .checkout-wrapper {
+    padding: 60px 10%;
+  }
+}
+
+/* Medium Laptops (1025px - 1440px) */
+@media (max-width: 1440px) and (min-width: 1025px) {
+  .checkout-wrapper {
+    padding: 40px 6%;
+  }
+}
+
+/* Tablets & Small Laptops (768px - 1024px) */
+@media (max-width: 1024px) {
+  .checkout-wrapper {
+    padding: 30px 4%;
+  }
+  
+  .checkout-content {
+    flex-direction: column;
+    gap: 30px;
+  }
+  
+  .checkout-form {
+    width: 100%;
+  }
+  
+  .payment-summary {
+    width: 100%;
+    position: static; /* Disable sticky sidebar when stacked */
+    margin-top: 10px;
+  }
+}
+
+/* Small Tablets & Large Phones (481px - 767px) */
+@media (max-width: 767px) {
+  .receiver-grid {
+    grid-template-columns: 1fr; /* Single column for receiver boxes */
+    gap: 12px;
+  }
+  
+  .main-title {
+    font-size: 24px;
+    margin-bottom: 24px;
+  }
+  
+  .payment-panel {
+    padding: 20px;
+  }
+  
+  .card-preview {
+    padding: 20px;
+    min-height: 140px;
+  }
+  
+  .card-number-display {
+    font-size: 18px;
+    letter-spacing: 2px;
+  }
+}
+
+/* Micro Mobile (320px - 480px) */
+@media (max-width: 480px) {
+  .checkout-wrapper {
+    padding: 20px 16px;
+  }
+  
+  .form-section {
+    margin-bottom: 24px;
+  }
+  
+  .section-heading {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  
+  .address-input-wrapper {
+    padding: 10px 14px;
+    border-radius: 10px;
+  }
+  
+  .address-input-wrapper input {
+    font-size: 14px;
+  }
+  
+  .radio-item, .payment-item {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+  
+  /* Prevent Card Preview text overflow on small mobile screens */
+  .card-preview {
+    padding: 16px 14px;
+    min-height: 130px;
+    border-radius: 12px;
+    margin-bottom: 18px;
+  }
+  
+  .card-chip {
+    margin-bottom: 14px;
+  }
+  
+  .chip-lines {
+    width: 30px;
+    height: 22px;
+    padding: 3px 5px;
+  }
+  
+  .card-number-display {
+    font-size: 15px !important;
+    letter-spacing: 1.5px !important;
+    margin-bottom: 14px;
+  }
+  
+  .card-bottom-row {
+    font-size: 10px !important;
+  }
+  
+  .card-label {
+    font-size: 8px !important;
+    letter-spacing: 1px;
+  }
+  
+  .card-value {
+    font-size: 12px !important;
+  }
+  
+  /* Stack checkout button controls vertically for easy touch interaction */
+  .footer-buttons {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-top: 24px;
+  }
+  
+  .btn-confirm, .btn-back {
+    width: 100%;
+    text-align: center;
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+  
+  /* Success screen sizing */
+  .success-card {
+    width: 95%;
+    padding: 32px 20px;
+  }
+  
+  .thanks-msg {
+    font-size: 22px;
+  }
+  
+  .thanks-sub {
+    font-size: 13px;
+  }
 }
