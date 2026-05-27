@@ -255,9 +255,21 @@
    ========================================================================== */
 @media (max-width: 768px) {
   .nav-left, .nav-right {
-    gap: 15px;
+    gap: 12px;
   }
   .nav-logo img {
     height: 28px;
+  }
+}
+@media (max-width: 480px) {
+  .nav-left, .nav-right {
+    gap: 8px;
+  }
+  .nav-logo img {
+    height: 24px;
+  }
+  .nav-icon-btn svg {
+    width: 20px;
+    height: 20px;
   }
 }

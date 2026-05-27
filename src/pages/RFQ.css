@@ -35,7 +35,7 @@
 }
 
 .form-field {
-    width: 551px;
+    width: 100%;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -199,4 +199,40 @@
 .btn-confirm.confirmed {
   background-color: #a70d0d;
   color: white;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN (MEDIA QUERIES)
+   ========================================================================== */
+@media (max-width: 992px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-field {
+    width: 100%;
+  }
+  .response-card {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    text-align: center;
+  }
+  .res-company-info {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .rfq-container {
+    margin-top: 80px;
+  }
+  .res-details-grid {
+    flex-direction: column;
+    gap: 15px;
+  }
+  .form-actions {
+    flex-direction: column;
+  }
+  .form-actions button {
+    width: 100%;
+  }
 }
