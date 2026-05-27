@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   LayoutDashboard, Box, Bell, ClipboardList, 
   ReceiptText, Users, CheckCircle2, Clock, 
@@ -233,7 +234,9 @@ export default function SupplierDashboard() {
       <div style={{ display: 'flex', flex: 1 }}>
         <aside className="sidebar">
           <div className="logo-section">
-            <img src={logo} alt="IndusConnect" className="logo-img" style={{ height: '35px', objectFit: 'contain' }} />
+            <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
+              <img src={logo} alt="IndusConnect" className="logo-img" style={{ height: '35px', objectFit: 'contain' }} />
+            </Link>
           </div>
           
           <nav className="nav-menu">
@@ -298,104 +301,108 @@ export default function SupplierDashboard() {
                   <Plus size={16}/> Add New Product
                 </button>
               </div>
-              <table className="data-table">
-                <thead><tr><th>Product Name ↕</th><th>Category</th><th>Price ↕</th><th>Quantity</th><th>Status</th><th style={{ textAlign: 'center' }}>Actions</th></tr></thead>
-                <tbody>
-                  {filteredProducts.length > 0 ? filteredProducts.map((item) => {
-                    const imageSrc = item.image && (item.image.startsWith('data:') || item.image.startsWith('http') || item.image.startsWith('/uploads/'))
-                      ? item.image
-                      : `${import.meta.env.BASE_URL || '/'}${(item.image || '').replace(/^\//, '')}`;
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead><tr><th>Product Name ↕</th><th>Category</th><th>Price ↕</th><th>Quantity</th><th>Status</th><th style={{ textAlign: 'center' }}>Actions</th></tr></thead>
+                  <tbody>
+                    {filteredProducts.length > 0 ? filteredProducts.map((item) => {
+                      const imageSrc = item.image && (item.image.startsWith('data:') || item.image.startsWith('http') || item.image.startsWith('/uploads/'))
+                        ? item.image
+                        : `${import.meta.env.BASE_URL || '/'}${(item.image || '').replace(/^\//, '')}`;
 
-                    return (
-                      <tr key={item.id}>
-                        <td>
-                          <div className="cell-flex">
-                            <img 
-                              src={imageSrc} 
-                              alt="" 
-                              className="table-img" 
-                              style={{width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #eee'}} 
-                              onError={(e)=>{e.target.src=DEFAULT_IMG}}
-                            />
-                            <span className="fw-bold text-dark">{item.name}</span>
-                          </div>
-                        </td>
-                        <td className="text-red">{item.category}</td>
-                        <td className="fw-bold"><span className="text-red">{item.price}</span> <span className="text-muted">EGP</span></td>
-                        <td className="fw-bold"><span className="text-red">{item.moq ? String(item.moq).replace(/\D/g,'') : '10'}</span> <span className="text-muted">Unit</span></td>
-                        <td><span className={`status-badge ${item.status?.toLowerCase() || 'approved'}`}>{item.status} {item.status === 'Approved' && '✓'}</span></td>
-                        <td style={{ textAlign: 'center' }}>
-                          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
-                            <button onClick={(e) => handleOpenEditModal(e, item)} style={{ border: 'none', background: 'none', color: '#4B5563', cursor: 'pointer' }}><Pencil size={18} /></button>
-                            <button onClick={(e) => handleDeleteProduct(e, item.id)} style={{ border: 'none', background: 'none', color: '#EF4444', cursor: 'pointer' }}><Trash2 size={18} /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  }) : (<tr><td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>You haven't added any products yet.</td></tr>)}
-                </tbody>
-              </table>
+                      return (
+                        <tr key={item.id}>
+                          <td>
+                            <div className="cell-flex">
+                              <img 
+                                src={imageSrc} 
+                                alt="" 
+                                className="table-img" 
+                                style={{width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #eee'}} 
+                                onError={(e)=>{e.target.src=DEFAULT_IMG}}
+                              />
+                              <span className="fw-bold text-dark">{item.name}</span>
+                            </div>
+                          </td>
+                          <td className="text-red">{item.category}</td>
+                          <td className="fw-bold"><span className="text-red">{item.price}</span> <span className="text-muted">EGP</span></td>
+                          <td className="fw-bold"><span className="text-red">{item.moq ? String(item.moq).replace(/\D/g,'') : '10'}</span> <span className="text-muted">Unit</span></td>
+                          <td><span className={`status-badge ${item.status?.toLowerCase() || 'approved'}`}>{item.status} {item.status === 'Approved' && '✓'}</span></td>
+                          <td style={{ textAlign: 'center' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
+                              <button onClick={(e) => handleOpenEditModal(e, item)} style={{ border: 'none', background: 'none', color: '#4B5563', cursor: 'pointer' }}><Pencil size={18} /></button>
+                              <button onClick={(e) => handleDeleteProduct(e, item.id)} style={{ border: 'none', background: 'none', color: '#EF4444', cursor: 'pointer' }}><Trash2 size={18} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }) : (<tr><td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>You haven't added any products yet.</td></tr>)}
+                  </tbody>
+                </table>
+              </div>
               {filteredProducts.length > 0 && renderPagination()}
             </div>
           )}
 
           {activeTab === 'rfq' && (
             <div className="card-panel p-0">
-              <table className="data-table">
-                <thead><tr><th>Id ↕</th><th>Buyer ↕</th><th>Needed By</th><th>Product ↕</th><th>Qty</th><th>Budget</th><th>Status</th><th style={{ textAlign: 'center' }}>Actions</th></tr></thead>
-                <tbody>
-                  {rfqs.length > 0 ? rfqs.map((item) => (
-                    <tr key={item.id}>
-                      <td className="fw-bold text-red">#{item.id}</td>
-                      <td>
-                        <div className="cell-flex">
-                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#c24438', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>BY</div>
-                          <span className="fw-bold text-dark">{item.buyer_name}</span>
-                        </div>
-                      </td>
-                      <td className="text-dark">{item.date_needed}</td>
-                      <td className="fw-bold text-dark">{item.product}</td>
-                      <td className="fw-bold"><span className="text-red">{item.quantity}</span> <span className="text-muted">Unit</span></td>
-                      <td className="fw-bold"><span className="text-red">{item.budget ? item.budget.toLocaleString() : 'N/A'}</span> <span className="text-muted">EGP</span></td>
-                      <td>
-                        <span className={`status-badge ${(item.status || 'pending').toLowerCase()}`}>
-                          {item.status === 'accepted' ? '✓ Accepted' : item.status === 'rejected' ? '✗ Rejected' : '⏳ Pending'}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                          {item.status !== 'accepted' && (
-                            <button
-                              onClick={() => setRfqQuoteModal({ open: true, rfqId: item.id, rfqProduct: item.product })}
-                              style={{ backgroundColor: '#c24438', color: '#fff', border: 'none', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
-                            >
-                              📤 Quote
-                            </button>
-                          )}
-                          {item.status === 'pending' && (
-                            <button
-                              onClick={() => handleRFQStatusUpdate(item.id, 'rejected')}
-                              style={{ backgroundColor: '#f3f4f6', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
-                            >
-                              ✗ Reject
-                            </button>
-                          )}
-                          {item.status === 'rejected' && (
-                            <button
-                              onClick={() => handleRFQStatusUpdate(item.id, 'pending')}
-                              style={{ backgroundColor: '#f3f4f6', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', cursor: 'pointer' }}
-                            >
-                              ↩ Undo
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '30px' }}>No active RFQ requests listed.</td></tr>
-                  )}
-                </tbody>
-              </table>
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead><tr><th>Id ↕</th><th>Buyer ↕</th><th>Needed By</th><th>Product ↕</th><th>Qty</th><th>Budget</th><th>Status</th><th style={{ textAlign: 'center' }}>Actions</th></tr></thead>
+                  <tbody>
+                    {rfqs.length > 0 ? rfqs.map((item) => (
+                      <tr key={item.id}>
+                        <td className="fw-bold text-red">#{item.id}</td>
+                        <td>
+                          <div className="cell-flex">
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#c24438', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>BY</div>
+                            <span className="fw-bold text-dark">{item.buyer_name}</span>
+                          </div>
+                        </td>
+                        <td className="text-dark">{item.date_needed}</td>
+                        <td className="fw-bold text-dark">{item.product}</td>
+                        <td className="fw-bold"><span className="text-red">{item.quantity}</span> <span className="text-muted">Unit</span></td>
+                        <td className="fw-bold"><span className="text-red">{item.budget ? item.budget.toLocaleString() : 'N/A'}</span> <span className="text-muted">EGP</span></td>
+                        <td>
+                          <span className={`status-badge ${(item.status || 'pending').toLowerCase()}`}>
+                            {item.status === 'accepted' ? '✓ Accepted' : item.status === 'rejected' ? '✗ Rejected' : '⏳ Pending'}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            {item.status !== 'accepted' && (
+                              <button
+                                onClick={() => setRfqQuoteModal({ open: true, rfqId: item.id, rfqProduct: item.product })}
+                                style={{ backgroundColor: '#c24438', color: '#fff', border: 'none', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                              >
+                                📤 Quote
+                              </button>
+                            )}
+                            {item.status === 'pending' && (
+                              <button
+                                onClick={() => handleRFQStatusUpdate(item.id, 'rejected')}
+                                style={{ backgroundColor: '#f3f4f6', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                              >
+                                ✗ Reject
+                              </button>
+                            )}
+                            {item.status === 'rejected' && (
+                              <button
+                                onClick={() => handleRFQStatusUpdate(item.id, 'pending')}
+                                style={{ backgroundColor: '#f3f4f6', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', cursor: 'pointer' }}
+                              >
+                                ↩ Undo
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr><td colSpan="8" style={{ textAlign: 'center', padding: '30px' }}>No active RFQ requests listed.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
@@ -414,27 +421,29 @@ export default function SupplierDashboard() {
                   </div>
                 </div>
                 <div className="card-panel p-0 mt-30">
-                  <table className="data-table">
-                    <thead><tr><th>Buyer ↕</th><th>Date ↕</th><th>Price ↕</th><th>Quantity</th><th>Status</th></tr></thead>
-                    <tbody>
-                      {orders.length > 0 ? orders.map((item, index) => (
-                        <tr key={index}>
-                          <td>
-                            <div className="cell-flex">
-                              <img src={item.img} alt="" className="avatar-img" onError={(e)=>{e.target.src='https://i.pravatar.cc/150?u=buyer'+index}} />
-                              <span className="fw-bold text-dark">{item.name}</span>
-                            </div>
-                          </td>
-                          <td className="text-dark">{item.date}</td>
-                          <td className="fw-bold"><span className="text-red">{item.price.toLocaleString()}</span> <span className="text-muted">EGP</span></td>
-                          <td className="fw-bold"><span className="text-red">{item.qty}</span> <span className="text-muted">Unit</span></td>
-                          <td><span className={`status-badge ${item.status.toLowerCase().replace(' ', '-')}`}>{item.status} {item.status === 'Delivered' && '✓'}</span></td>
-                        </tr>
-                      )) : (
-                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '30px' }}>No buyer orders received for your catalog yet.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
+                  <div className="table-responsive">
+                    <table className="data-table">
+                      <thead><tr><th>Buyer ↕</th><th>Date ↕</th><th>Price ↕</th><th>Quantity</th><th>Status</th></tr></thead>
+                      <tbody>
+                        {orders.length > 0 ? orders.map((item, index) => (
+                          <tr key={index}>
+                            <td>
+                              <div className="cell-flex">
+                                <img src={item.img} alt="" className="avatar-img" onError={(e)=>{e.target.src='https://i.pravatar.cc/150?u=buyer'+index}} />
+                                <span className="fw-bold text-dark">{item.name}</span>
+                              </div>
+                            </td>
+                            <td className="text-dark">{item.date}</td>
+                            <td className="fw-bold"><span className="text-red">{item.price.toLocaleString()}</span> <span className="text-muted">EGP</span></td>
+                            <td className="fw-bold"><span className="text-red">{item.qty}</span> <span className="text-muted">Unit</span></td>
+                            <td><span className={`status-badge ${item.status.toLowerCase().replace(' ', '-')}`}>{item.status} {item.status === 'Delivered' && '✓'}</span></td>
+                          </tr>
+                        )) : (
+                          <tr><td colSpan="5" style={{ textAlign: 'center', padding: '30px' }}>No buyer orders received for your catalog yet.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </>
            )}
@@ -444,30 +453,30 @@ export default function SupplierDashboard() {
       <div style={{ width: '100%' }}><Footer /></div>
 
       {isModalOpen && (
-        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div className="modal-content" style={{ background: '#fff', padding: '30px', borderRadius: '16px', width: '600px', maxWidth: '95%', position: 'relative', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <button onClick={() => setIsModalOpen(false)} style={{ position: 'absolute', top: '20px', right: '20px', background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><X size={18} color="#4b5563" /></button>
-            <div style={{ marginBottom: '25px', borderBottom: '1px solid #e5e7eb', paddingBottom: '15px' }}>
-              <h2 style={{ margin: 0, color: '#111827', fontSize: '22px', display: 'flex', alignItems: 'center', gap: '10px' }}><Box size={24} color="#C24133" /> {isEditMode ? 'Edit Product' : 'Add New Product'}</h2>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <button onClick={() => setIsModalOpen(false)} className="modal-close-btn"><X size={18} /></button>
+            <div className="modal-header">
+              <h2><Box size={24} color="#C24133" /> {isEditMode ? 'Edit Product' : 'Add New Product'}</h2>
             </div>
             
-            <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>Product Image</label>
-                <div onClick={() => fileInputRef.current.click()} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '140px', border: '2px dashed #d1d5db', borderRadius: '12px', cursor: 'pointer', position: 'relative', backgroundColor: '#f9fafb', overflow: 'hidden' }}>
-                  {newProduct.image ? <img src={newProduct.image} alt="Preview" style={{ height: '100%', width: '100%', objectFit: 'contain', backgroundColor: '#fff' }} /> : <div style={{ color: '#9CA3AF', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}><ImageIcon size={32} /><span style={{fontSize:'12px', fontWeight:'500'}}>Click to upload image</span></div>}
+            <form onSubmit={handleSaveProduct} className="modal-form">
+              <div className="modal-form-group">
+                <label>Product Image</label>
+                <div onClick={() => fileInputRef.current.click()} className="image-upload-dropzone">
+                  {newProduct.image ? <img src={newProduct.image} alt="Preview" /> : <div className="upload-placeholder-content"><ImageIcon size={32} /><span>Click to upload image</span></div>}
                   <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} style={{ display: 'none' }} />
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>Product Name</label>
-                  <input type="text" name="name" value={newProduct.name} onChange={handleProductInputChange} placeholder="e.g. Modern Office Desk" required style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', outline: 'none' }} />
+              <div className="modal-grid-fields">
+                <div className="modal-field-span-2">
+                  <label>Product Name</label>
+                  <input type="text" name="name" value={newProduct.name} onChange={handleProductInputChange} placeholder="e.g. Modern Office Desk" required />
                 </div>
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>Category</label>
-                  <select name="category" value={newProduct.category} onChange={handleProductInputChange} required style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', outline: 'none', backgroundColor: '#fff' }}>
+                <div className="modal-field-span-2">
+                  <label>Category</label>
+                  <select name="category" value={newProduct.category} onChange={handleProductInputChange} required>
                     <option value="">Select Category</option>
                     <option value="Furniture">Furniture</option>
                     <option value="Textile">Textile</option>
@@ -476,19 +485,19 @@ export default function SupplierDashboard() {
                     <option value="Electronic & Spare Parts">Electronic & Spare Parts</option>
                   </select>
                 </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>Price (EGP)</label>
-                  <input type="number" name="price" value={newProduct.price} onChange={handleProductInputChange} placeholder="0.00" required style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', outline: 'none' }} />
+                <div className="modal-field-half">
+                  <label>Price (EGP)</label>
+                  <input type="number" name="price" value={newProduct.price} onChange={handleProductInputChange} placeholder="0.00" required />
                 </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>Quantity</label>
-                  <input type="number" name="quantity" value={newProduct.quantity} onChange={handleProductInputChange} placeholder="Number of units" required style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', outline: 'none' }} />
+                <div className="modal-field-half">
+                  <label>Quantity</label>
+                  <input type="number" name="quantity" value={newProduct.quantity} onChange={handleProductInputChange} placeholder="Number of units" required />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px', paddingTop: '15px', borderTop: '1px solid #e5e7eb' }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} style={{ flex: 1, background: '#fff', color: '#374151', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>Cancel</button>
-                <button type="submit" style={{ flex: 2, background: '#C24133', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><Plus size={18} /> {isEditMode ? 'Save Changes' : 'Submit Product'}</button>
+              <div className="modal-form-actions">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-modal-cancel">Cancel</button>
+                <button type="submit" className="btn-modal-submit"><Plus size={18} /> {isEditMode ? 'Save Changes' : 'Submit Product'}</button>
               </div>
             </form>
           </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, Box, Bell, Users, 
   CheckCircle2, Clock, XCircle, Search,
@@ -238,7 +238,9 @@ export default function AdminDashboard() {
       
       <div className="admin-dashboard-container">
         <div className="admin-logo-section">
-          <img src={logo} alt="IndusConnect" className="admin-logo-img" style={{ height: '35px', objectFit: 'contain' }} />
+          <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
+            <img src={logo} alt="IndusConnect" className="admin-logo-img" style={{ height: '35px', objectFit: 'contain' }} />
+          </Link>
         </div>
         
         {/* Sidebar Component */}
@@ -339,56 +341,58 @@ export default function AdminDashboard() {
                 />
               </div>
               
-              <table className="admin-data-table">
-                <thead>
-                  <tr>
-                    <th>Full Name</th>
-                    <th>Id</th>
-                    <th>Registration date</th>
-                    <th>Role / Status</th>
-                    <th className="actions-col">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentUsersList.length > 0 ? currentUsersList.map((user) => (
-                    <tr key={user.id}>
-                      <td className="user-info-cell">
-                        <img src={user.img} alt="" className="user-avatar" onError={(e)=>{e.target.src='https://i.pravatar.cc/150?u='+user.id}} />
-                        <div className="user-details">
-                          <span className="user-name">{user.name}</span>
-                          <span className="user-email">{user.email}</span>
-                        </div>
-                      </td>
-                      <td className="user-id-cell">{user.id}</td>
-                      <td className="user-date-cell">{user.date}</td>
-                      <td>
-                        <select 
-                          className="admin-role-select"
-                          value={user.status.toLowerCase()} 
-                          onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
-                        >
-                          <option value="buyer">Buyer</option>
-                          <option value="supplier">Supplier</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </td>
-                      <td className="actions-col">
-                        <div className="action-buttons">
-                          <button 
-                            onClick={() => handleDeleteUser(user.id)} 
-                            className="delete-btn" 
-                            title="Delete User"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
+              <div className="admin-table-responsive">
+                <table className="admin-data-table">
+                  <thead>
+                    <tr>
+                      <th>Full Name</th>
+                      <th>Id</th>
+                      <th>Registration date</th>
+                      <th>Role / Status</th>
+                      <th className="actions-col">Actions</th>
                     </tr>
-                  )) : (
-                    <tr><td colSpan="5" style={{ textAlign: 'center', padding: '30px' }}>No users found.</td></tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {currentUsersList.length > 0 ? currentUsersList.map((user) => (
+                      <tr key={user.id}>
+                        <td className="user-info-cell">
+                          <img src={user.img} alt="" className="user-avatar" onError={(e)=>{e.target.src='https://i.pravatar.cc/150?u='+user.id}} />
+                          <div className="user-details">
+                            <span className="user-name">{user.name}</span>
+                            <span className="user-email">{user.email}</span>
+                          </div>
+                        </td>
+                        <td className="user-id-cell">{user.id}</td>
+                        <td className="user-date-cell">{user.date}</td>
+                        <td>
+                          <select 
+                            className="admin-role-select"
+                            value={user.status.toLowerCase()} 
+                            onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
+                          >
+                            <option value="buyer">Buyer</option>
+                            <option value="supplier">Supplier</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                        </td>
+                        <td className="actions-col">
+                          <div className="action-buttons">
+                            <button 
+                              onClick={() => handleDeleteUser(user.id)} 
+                              className="delete-btn" 
+                              title="Delete User"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: '30px' }}>No users found.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
               {totalUserPages > 1 && <Pagination totalPages={totalUserPages} current={currentPage} setPage={setCurrentPage} />}
             </div>
           )}
@@ -430,67 +434,69 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              <table className="admin-data-table">
-                <thead>
-                  <tr>
-                    <th className="checkbox-col"></th>
-                    <th>Product Name</th>
-                    <th>Price</th>
-                    <th>Quantity</th>
-                    <th>Status</th>
-                    <th className="actions-col">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentProductsList.length > 0 ? currentProductsList.map((prod) => {
-                    const imageSrc = prod?.image && (prod.image.startsWith('data:') || prod.image.startsWith('http') || prod.image.startsWith('/uploads/'))
-                      ? prod.image
-                      : `${import.meta.env.BASE_URL || '/'}${(prod?.image || '').replace(/^\//, '')}`;
-
-                    return (
-                      <tr key={prod.id}>
-                        <td className="checkbox-col">
-                          <input type="checkbox" checked={selectedProductIds.includes(prod.id)} onChange={(e) => handleSelectProduct(e, prod.id)} />
-                        </td>
-                        <td className="product-info-cell">
-                          <img src={imageSrc} alt="" className="product-img" onError={(e)=>{e.target.src=DEFAULT_IMG}}/>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontWeight: 'bold' }}>{prod?.name || 'Unnamed Product'}</span>
-                            <span style={{ fontSize: '11px', color: '#9ca3af' }}>Supplier: {prod.supplier_name || 'Official'}</span>
-                          </div>
-                        </td>
-                        <td className="product-price-cell">
-                          <span className="price-val">{Number(prod?.price || 0).toLocaleString()}</span> <span className="currency">EGP</span>
-                        </td>
-                        <td className="product-qty-cell">
-                          <span className="qty-val">{prod?.moq ? String(prod.moq).replace(/\D/g,'') : '10'}</span> <span className="unit">Unit</span>
-                        </td>
-                         <td>
-                          <span className={`admin-prod-status ${prod?.status?.toLowerCase() || 'approved'}`}>
-                            {prod?.status || 'Approved'} {prod?.status === 'Approved' && '✓'}
-                          </span>
-                        </td>
-                        <td className="actions-col">
-                          <div className="action-buttons">
-                            {prod?.status !== 'Approved' && (
-                              <button onClick={(e) => handleUpdateProductStatus(e, prod.id, 'Approved')} className="approve-btn" title="Approve Product"><Check size={18} /></button>
-                            )}
-                            {prod?.status !== 'Rejected' && (
-                              <button onClick={(e) => handleUpdateProductStatus(e, prod.id, 'Rejected')} className="reject-btn" title="Reject Product"><X size={18} /></button>
-                            )}
-                            <button onClick={(e) => handleOpenEditModal(e, prod)} title="Edit"><Pencil size={18} /></button>
-                            <button onClick={(e) => handleDeleteProduct(e, prod.id)} className="delete-btn" title="Delete"><Trash2 size={18} /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  }) : (
+              <div className="admin-table-responsive">
+                <table className="admin-data-table">
+                  <thead>
                     <tr>
-                      <td colSpan="6" className="no-data" style={{ textAlign: 'center', padding: '30px' }}>No products found.</td>
+                      <th className="checkbox-col"></th>
+                      <th>Product Name</th>
+                      <th>Price</th>
+                      <th>Quantity</th>
+                      <th>Status</th>
+                      <th className="actions-col">Actions</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {currentProductsList.length > 0 ? currentProductsList.map((prod) => {
+                      const imageSrc = prod?.image && (prod.image.startsWith('data:') || prod.image.startsWith('http') || prod.image.startsWith('/uploads/'))
+                        ? prod.image
+                        : `${import.meta.env.BASE_URL || '/'}${(prod?.image || '').replace(/^\//, '')}`;
+
+                      return (
+                        <tr key={prod.id}>
+                          <td className="checkbox-col">
+                            <input type="checkbox" checked={selectedProductIds.includes(prod.id)} onChange={(e) => handleSelectProduct(e, prod.id)} />
+                          </td>
+                          <td className="product-info-cell">
+                            <img src={imageSrc} alt="" className="product-img" onError={(e)=>{e.target.src=DEFAULT_IMG}}/>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontWeight: 'bold' }}>{prod?.name || 'Unnamed Product'}</span>
+                              <span style={{ fontSize: '11px', color: '#9ca3af' }}>Supplier: {prod.supplier_name || 'Official'}</span>
+                            </div>
+                          </td>
+                          <td className="product-price-cell">
+                            <span className="price-val">{Number(prod?.price || 0).toLocaleString()}</span> <span className="currency">EGP</span>
+                          </td>
+                          <td className="product-qty-cell">
+                            <span className="qty-val">{prod?.moq ? String(prod.moq).replace(/\D/g,'') : '10'}</span> <span className="unit">Unit</span>
+                          </td>
+                           <td>
+                            <span className={`admin-prod-status ${prod?.status?.toLowerCase() || 'approved'}`}>
+                              {prod?.status || 'Approved'} {prod?.status === 'Approved' && '✓'}
+                            </span>
+                          </td>
+                          <td className="actions-col">
+                            <div className="action-buttons">
+                              {prod?.status !== 'Approved' && (
+                                <button onClick={(e) => handleUpdateProductStatus(e, prod.id, 'Approved')} className="approve-btn" title="Approve Product"><Check size={18} /></button>
+                              )}
+                              {prod?.status !== 'Rejected' && (
+                                <button onClick={(e) => handleUpdateProductStatus(e, prod.id, 'Rejected')} className="reject-btn" title="Reject Product"><X size={18} /></button>
+                              )}
+                              <button onClick={(e) => handleOpenEditModal(e, prod)} title="Edit"><Pencil size={18} /></button>
+                              <button onClick={(e) => handleDeleteProduct(e, prod.id)} className="delete-btn" title="Delete"><Trash2 size={18} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }) : (
+                      <tr>
+                        <td colSpan="6" className="no-data" style={{ textAlign: 'center', padding: '30px' }}>No products found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
               {totalProductPages > 1 && <Pagination totalPages={totalProductPages} current={currentPage} setPage={setCurrentPage} />}
             </div>
