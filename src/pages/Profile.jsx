@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useFavorites, useCart, useAuth } from '../App'; 
+import { useFavorites, useCart, useAuth, useToast } from '../App'; 
 import { authAPI } from '../api/auth';
 import { favoritesAPI } from '../api/favorites';
 import { ordersAPI } from '../api/orders';
@@ -15,6 +15,7 @@ export default function Profile() {
   const { toggleFavorite, isFavorite } = useFavorites();
   const { addToCart } = useCart(); 
   const { user, logout, refreshUser } = useAuth();
+  const { showToast } = useToast();
 
   const [wishlistProducts, setWishlistProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -85,8 +86,9 @@ export default function Profile() {
     try {
       await samplesAPI.approveSample(sampleId);
       await loadSamples();
+      showToast('✅ Sample request approved successfully!', 'success');
     } catch (err) {
-      alert('Failed to approve sample request: ' + (err.message || err));
+      showToast('❌ Failed to approve sample request: ' + (err.message || err), 'error');
     } finally {
       setProcessingId(null);
       setProcessingAction('');
@@ -99,8 +101,9 @@ export default function Profile() {
     try {
       await samplesAPI.rejectSample(sampleId);
       await loadSamples();
+      showToast('✅ Sample request rejected successfully!', 'success');
     } catch (err) {
-      alert('Failed to reject sample request: ' + (err.message || err));
+      showToast('❌ Failed to reject sample request: ' + (err.message || err), 'error');
     } finally {
       setProcessingId(null);
       setProcessingAction('');
@@ -114,8 +117,9 @@ export default function Profile() {
     try {
       await samplesAPI.deleteSample(sampleId);
       await loadSamples();
+      showToast('✅ Sample request deleted successfully!', 'success');
     } catch (err) {
-      alert('Failed to delete sample request: ' + (err.message || err));
+      showToast('❌ Failed to delete sample request: ' + (err.message || err), 'error');
     } finally {
       setProcessingId(null);
       setProcessingAction('');
@@ -139,9 +143,9 @@ export default function Profile() {
     try {
       await authAPI.uploadAvatar(file);
       await refreshUser();
-      alert('Avatar uploaded successfully!');
+      showToast('✅ Avatar uploaded successfully!', 'success');
     } catch (err) {
-      alert('Error uploading avatar: ' + err.message);
+      showToast('❌ Error uploading avatar: ' + err.message, 'error');
     }
   };
 
@@ -155,9 +159,9 @@ export default function Profile() {
       });
       await refreshUser();
       setIsEditingProfile(false);
-      alert('Profile updated successfully!');
+      showToast('✅ Profile updated successfully!', 'success');
     } catch (err) {
-      alert('Failed to update profile: ' + err.message);
+      showToast('❌ Failed to update profile: ' + err.message, 'error');
     } finally {
       setUpdatingProfile(false);
     }
@@ -340,10 +344,10 @@ export default function Profile() {
               <div className="wishlist-header">
                 <h2>Wishlist</h2>
                 <div className="wishlist-actions">
-                  <button className="action-btn share-btn" onClick={() => alert('Wishlist link copied!')}>
+                  <button className="action-btn share-btn" onClick={() => showToast('🔄 Wishlist link copied!', 'success')}>
                     <span>🔄</span> Share
                   </button>
-                  <button className="action-btn edit-btn" onClick={() => alert('Refresh wishlist...')}>
+                  <button className="action-btn edit-btn" onClick={() => showToast('✏️ Refreshing wishlist...', 'info')}>
                     <span>✏️</span> Refresh
                   </button>
                 </div>
