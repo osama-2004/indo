@@ -23,6 +23,9 @@ export default function Profile() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [loadingSamples, setLoadingSamples] = useState(false);
 
+  const [processingId, setProcessingId] = useState(null);
+  const [processingAction, setProcessingAction] = useState('');
+
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedUser, setEditedUser] = useState({ name: '', email: '', phone: '' });
   const [updatingProfile, setUpdatingProfile] = useState(false);
@@ -73,6 +76,49 @@ export default function Profile() {
       console.error('Failed loading samples:', err);
     } finally {
       setLoadingSamples(false);
+    }
+  };
+
+  const handleApproveSample = async (sampleId) => {
+    setProcessingId(sampleId);
+    setProcessingAction('approve');
+    try {
+      await samplesAPI.approveSample(sampleId);
+      await loadSamples();
+    } catch (err) {
+      alert('Failed to approve sample request: ' + (err.message || err));
+    } finally {
+      setProcessingId(null);
+      setProcessingAction('');
+    }
+  };
+
+  const handleRejectSample = async (sampleId) => {
+    setProcessingId(sampleId);
+    setProcessingAction('reject');
+    try {
+      await samplesAPI.rejectSample(sampleId);
+      await loadSamples();
+    } catch (err) {
+      alert('Failed to reject sample request: ' + (err.message || err));
+    } finally {
+      setProcessingId(null);
+      setProcessingAction('');
+    }
+  };
+
+  const handleDeleteSample = async (sampleId) => {
+    if (!confirm('Are you sure you want to delete this sample request?')) return;
+    setProcessingId(sampleId);
+    setProcessingAction('delete');
+    try {
+      await samplesAPI.deleteSample(sampleId);
+      await loadSamples();
+    } catch (err) {
+      alert('Failed to delete sample request: ' + (err.message || err));
+    } finally {
+      setProcessingId(null);
+      setProcessingAction('');
     }
   };
 
@@ -465,35 +511,122 @@ export default function Profile() {
                   <Link to="/services" className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none' }}>Browse Products</Link>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {samples.map(sample => (
-                    <div key={sample.id} style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '20px', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', gap: '15px', alignItems: 'flex-start' }}>
-                      <div style={{ width: '55px', height: '55px', borderRadius: '10px', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0 }}>📦</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
-                          <div>
-                            <h4 style={{ margin: '0 0 4px 0', color: '#111827', fontSize: '16px' }}>{sample.product_name}</h4>
-                            <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>Submitted: {new Date(sample.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} className="sample-requests-list">
+                  {samples.map(sample => {
+                    const statusLower = (sample.status || 'Pending').toLowerCase();
+                    return (
+                      <div key={sample.id} className="sample-card-item" style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '20px', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', gap: '15px', alignItems: 'flex-start', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', width: '100%' }}>
+                          <div style={{ width: '55px', height: '55px', borderRadius: '10px', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0 }}>📦</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px', width: '100%' }}>
+                              <div>
+                                <h4 style={{ margin: '0 0 4px 0', color: '#111827', fontSize: '16px' }}>{sample.product_name}</h4>
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                                  <span>Quantity: <strong>{sample.quantity || 1}</strong></span>
+                                  <span>•</span>
+                                  <span>Submitted: {new Date(sample.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                </div>
+                              </div>
+                              <span className={`sample-badge ${statusLower}`} style={{
+                                padding: '4px 12px',
+                                borderRadius: '20px',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                backgroundColor: statusLower === 'approved' ? '#dcfce7' : statusLower === 'rejected' ? '#fee2e2' : statusLower === 'deleted' ? '#f3f4f6' : '#fef3c7',
+                                color: statusLower === 'approved' ? '#15803d' : statusLower === 'rejected' ? '#b91c1c' : statusLower === 'deleted' ? '#4b5563' : '#92400e'
+                              }}>
+                                {statusLower === 'approved' ? '✓ Approved' : statusLower === 'rejected' ? '✗ Rejected' : statusLower === 'deleted' ? 'Deleted' : '⏳ Pending'}
+                              </span>
+                            </div>
                           </div>
-                          <span style={{
-                            padding: '4px 12px',
-                            borderRadius: '20px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            backgroundColor: sample.status === 'approved' ? '#dcfce7' : sample.status === 'rejected' ? '#fee2e2' : '#fef3c7',
-                            color: sample.status === 'approved' ? '#15803d' : sample.status === 'rejected' ? '#b91c1c' : '#92400e'
-                          }}>
-                            {sample.status === 'approved' ? '✓ Approved' : sample.status === 'rejected' ? '✗ Rejected' : '⏳ Pending Review'}
-                          </span>
                         </div>
-                        {sample.message && (
-                          <p style={{ margin: '10px 0 0 0', fontSize: '13px', color: '#6b7280', backgroundColor: '#f9fafb', padding: '8px 12px', borderRadius: '6px', borderLeft: '3px solid #d1d5db' }}>
-                            "{sample.message}"
-                          </p>
+
+                        <div style={{ width: '100%', fontSize: '13px', color: '#4b5563', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #f3f4f6', paddingTop: '12px' }}>
+                          {sample.buyer_name && (
+                            <div>
+                              <span style={{ color: '#9ca3af' }}>Buyer: </span>
+                              <strong>{sample.buyer_name}</strong> ({sample.buyer_email})
+                            </div>
+                          )}
+                          {sample.supplier_name && (
+                            <div>
+                              <span style={{ color: '#9ca3af' }}>Supplier: </span>
+                              <strong>{sample.supplier_name}</strong>
+                            </div>
+                          )}
+                          {sample.message && (
+                            <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280', backgroundColor: '#f9fafb', padding: '8px 12px', borderRadius: '6px', borderLeft: '3px solid #d1d5db', fontStyle: 'italic', width: '100%', boxSizing: 'border-box' }}>
+                              "{sample.message}"
+                            </p>
+                          )}
+                        </div>
+
+                        {(user.role === 'supplier' || user.role === 'admin') && (
+                          <div className="sample-card-actions" style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap', width: '100%' }}>
+                            {statusLower === 'pending' && (
+                              <>
+                                <button 
+                                  className="btn-sample-action approve"
+                                  disabled={processingId !== null}
+                                  onClick={() => handleApproveSample(sample.id)}
+                                  style={{
+                                    padding: '8px 16px',
+                                    borderRadius: '20px',
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                  }}
+                                >
+                                  {processingId === sample.id && processingAction === 'approve' ? 'Approving...' : '✓ Approve'}
+                                </button>
+                                <button 
+                                  className="btn-sample-action reject"
+                                  disabled={processingId !== null}
+                                  onClick={() => handleRejectSample(sample.id)}
+                                  style={{
+                                    padding: '8px 16px',
+                                    borderRadius: '20px',
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    backgroundColor: '#f59e0b',
+                                    color: 'white',
+                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                  }}
+                                >
+                                  {processingId === sample.id && processingAction === 'reject' ? 'Rejecting...' : '✗ Reject'}
+                                </button>
+                              </>
+                            )}
+                            <button 
+                              className="btn-sample-action delete"
+                              disabled={processingId !== null}
+                              onClick={() => handleDeleteSample(sample.id)}
+                              style={{
+                                padding: '8px 16px',
+                                borderRadius: '20px',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                border: 'none',
+                                cursor: 'pointer',
+                                backgroundColor: '#ef4444',
+                                color: 'white',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                              }}
+                            >
+                              {processingId === sample.id && processingAction === 'delete' ? 'Deleting...' : '🗑️ Delete'}
+                            </button>
+                          </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -259,14 +259,28 @@ export function initDB() {
       supplier_id INTEGER,
       product_id INTEGER NOT NULL,
       product_name TEXT NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1,
       message TEXT,
-      status TEXT NOT NULL DEFAULT 'pending',
+      status TEXT NOT NULL DEFAULT 'Pending',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      deleted_at DATETIME,
       FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (supplier_id) REFERENCES users(id) ON DELETE SET NULL,
       FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
     )
   `);
+
+  // Migration: add quantity, updated_at, and deleted_at to sample_requests table if they don't exist
+  try {
+    db.exec(`ALTER TABLE sample_requests ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1`);
+  } catch (_) { /* already exists */ }
+  try {
+    db.exec(`ALTER TABLE sample_requests ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
+  } catch (_) { /* already exists */ }
+  try {
+    db.exec(`ALTER TABLE sample_requests ADD COLUMN deleted_at DATETIME`);
+  } catch (_) { /* already exists */ }
 
   seedData();
 }

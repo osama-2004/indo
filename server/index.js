@@ -22,6 +22,7 @@ import complaintRoutes from './routes/complaints.js';
 import favoriteRoutes from './routes/favorites.js';
 import adminRoutes from './routes/admin.js';
 import sampleRoutes from './routes/samples.js';
+import sampleRequestRoutes from './routes/sampleRequest.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -72,6 +73,8 @@ app.use('/api/complaints', complaintRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/samples', sampleRoutes);
+app.use('/api/sample-request', sampleRequestRoutes);
+app.use('/sample-request', sampleRequestRoutes);
 
 // Serves build static assets in production mode
 const distPath = path.join(__dirname, '../dist');

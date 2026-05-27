@@ -20,23 +20,25 @@ router.post('/', authenticateToken, requireRole('buyer', 'admin'), (req, res) =>
 
     // Check if buyer already requested a sample for this product
     const existing = db.prepare(
-      'SELECT * FROM sample_requests WHERE buyer_id = ? AND product_id = ? AND status = ?'
-    ).get(req.user.id, productId, 'pending');
+      'SELECT * FROM sample_requests WHERE buyer_id = ? AND product_id = ? AND (status = ? OR status = ?)'
+    ).get(req.user.id, productId, 'Pending', 'pending');
     
     if (existing) {
       return res.status(400).json({ message: 'You already have a pending sample request for this product' });
     }
 
+    const quantity = req.body.quantity || 1;
     const result = db.prepare(`
-      INSERT INTO sample_requests (buyer_id, supplier_id, product_id, product_name, message, status)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO sample_requests (buyer_id, supplier_id, product_id, product_name, quantity, message, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
       req.user.id,
       product.supplier_id,
       productId,
       product.name,
+      quantity,
       message || '',
-      'pending'
+      'Pending'
     );
 
     res.status(201).json({ 

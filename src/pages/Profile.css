@@ -421,3 +421,48 @@
     height: 38px;
   }
 }
+
+/* My Sample Requests Custom Styles */
+.sample-requests-list {
+  margin-top: 15px;
+}
+
+.sample-card-item {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.sample-card-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.08) !important;
+}
+
+.sample-badge {
+  text-transform: capitalize;
+}
+
+.btn-sample-action {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.btn-sample-action:hover:not(:disabled) {
+  filter: brightness(0.95);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.12);
+}
+
+.btn-sample-action:active:not(:disabled) {
+  transform: scale(0.96) !important;
+}
+
+.btn-sample-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 576px) {
+  .sample-card-actions {
+    flex-direction: column;
+  }
+  .btn-sample-action {
+    width: 100%;
+  }
+}

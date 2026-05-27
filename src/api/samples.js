@@ -5,5 +5,11 @@ export const samplesAPI = {
   
   getSamples: () => client.get('/api/samples'),
   
-  updateSampleStatus: (sampleId, status) => client.put(`/api/samples/${sampleId}/status`, { status })
+  updateSampleStatus: (sampleId, status) => client.put(`/api/samples/${sampleId}/status`, { status }),
+
+  approveSample: (sampleId) => client.patch(`/api/sample-request/${sampleId}/approve`),
+  
+  rejectSample: (sampleId) => client.patch(`/api/sample-request/${sampleId}/reject`),
+  
+  deleteSample: (sampleId) => client.delete(`/api/sample-request/${sampleId}`)
 };
