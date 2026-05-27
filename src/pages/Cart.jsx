@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useCart, useAuth } from '../App';
+import { useCart, useAuth, useToast } from '../App';
 import './Cart.css'; 
 
 const getSmartImageSrc = (imagePath) => {
@@ -19,13 +19,14 @@ const getSmartImageSrc = (imagePath) => {
 export default function CartPage() {
   const { cart, updateQuantity, removeFromCart } = useCart();
   const { isLoggedIn } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const handleQtyChange = async (productId, currentQty, delta, moq) => {
     const moqNum = parseInt((moq || '1').toString().replace(/\D/g, '')) || 1;
     const nextQty = currentQty + delta;
     if (nextQty < moqNum) {
-      alert(`Minimum order quantity for this product is ${moqNum} units.`);
+      showToast(`⚠️ Minimum order quantity for this product is ${moqNum} units.`, 'warning');
       return;
     }
     try {
@@ -47,7 +48,7 @@ export default function CartPage() {
     if (isLoggedIn) {
       navigate('/checkout');
     } else {
-      alert('Please log in first to proceed to checkout!');
+      showToast('⚠️ Please log in first to proceed to checkout!', 'warning');
       navigate('/login');
     }
   };

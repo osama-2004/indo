@@ -70,9 +70,9 @@ export default function Services() {
   const handleAddToCart = async (e, product) => {
     e.preventDefault(); 
     e.stopPropagation(); 
+    const moqNum = parseInt((product.moq || '1').toString().replace(/\D/g, '')) || 1;
     try {
-      await addToCart(product, 1);
-      alert(`🛒 ${product.name} added to cart!`);
+      await addToCart(product, moqNum);
     } catch (err) {
       console.error(err);
     }

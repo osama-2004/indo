@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useFavorites, useCart, useAuth } from '../App'; 
+import { useFavorites, useCart, useAuth, useToast } from '../App'; 
 import { productsAPI } from '../api/products';
 import { samplesAPI } from '../api/samples';
 import './ServiceDetail.css'
@@ -32,6 +32,7 @@ export default function ServiceDetail() {
   const { toggleFavorite, isFavorite } = useFavorites();
   const { addToCart } = useCart();
   const { user, isLoggedIn } = useAuth();
+  const { showToast } = useToast();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +51,8 @@ export default function ServiceDetail() {
       try {
         const data = await productsAPI.getProduct(id);
         setProduct(data);
+        const moqNum = parseInt((data?.moq || '1').toString().replace(/\D/g, '')) || 1;
+        setQty(moqNum);
       } catch (err) {
         console.error("Error loading product detail from server:", err);
       } finally {
@@ -73,13 +76,12 @@ export default function ServiceDetail() {
     // MOQ enforcement
     const moqNum = parseInt((product.moq || '1').toString().replace(/\D/g, '')) || 1;
     if (qty < moqNum) {
-      alert(`Minimum order quantity (MOQ) for this product is ${moqNum} units. Please increase your quantity.`);
+      showToast(`⚠️ Minimum order quantity (MOQ) for this product is ${moqNum} units.`, 'warning');
       setQty(moqNum);
       return;
     }
     try {
       await addToCart(product, qty);
-      alert(`🛒 Added ${qty}x ${product.name} to your cart successfully!`);
       navigate('/cart');
     } catch (err) {
       console.error(err);
@@ -89,7 +91,7 @@ export default function ServiceDetail() {
   const handleSampleRequest = async (e) => {
     e.preventDefault();
     if (!isLoggedIn) {
-      alert('Please log in to request a sample.');
+      showToast('⚠️ Please log in to request a sample.', 'warning');
       navigate('/login');
       return;
     }

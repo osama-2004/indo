@@ -23,6 +23,46 @@ import Profile from './pages/Profile'
 import Favorites from './pages/Favorites'
 
 // ==========================================
+// 0. TOAST GLOBAL CONTEXT
+// ==========================================
+const ToastContext = createContext();
+
+export function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = (message, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3000);
+  };
+
+  return (
+    <ToastContext.Provider value={{ showToast }}>
+      {children}
+      <div className="custom-toast-container">
+        {toasts.map(toast => (
+          <div key={toast.id} className={`custom-toast ${toast.type}`}>
+            <span className="toast-icon">
+              {toast.type === 'success' && '✅'}
+              {toast.type === 'error' && '❌'}
+              {toast.type === 'warning' && '⚠️'}
+              {toast.type === 'info' && 'ℹ️'}
+            </span>
+            <span className="toast-message">{toast.message}</span>
+          </div>
+        ))}
+      </div>
+    </ToastContext.Provider>
+  );
+}
+
+export function useToast() {
+  return useContext(ToastContext);
+}
+
+// ==========================================
 // 1. AUTH GLOBAL CONTEXT
 // ==========================================
 const AuthContext = createContext();
@@ -173,6 +213,7 @@ const CartContext = createContext();
 export function CartProvider({ children }) {
   const { isLoggedIn } = useAuth();
   const [cart, setCart] = useState([]);
+  const { showToast } = useToast();
 
   const fetchCart = async () => {
     if (isLoggedIn) {
@@ -208,8 +249,10 @@ export function CartProvider({ children }) {
       try {
         const updatedItems = await cartAPI.addToCart(product.id, quantity);
         setCart(updatedItems);
+        showToast(`🛒 Added ${quantity}x ${product.name} to cart!`, 'success');
       } catch (err) {
         console.error('Error adding to cart on server:', err);
+        showToast('❌ Failed to add item to cart', 'error');
       }
     } else {
       setCart(prevCart => {
@@ -226,6 +269,7 @@ export function CartProvider({ children }) {
         localStorage.setItem('cart', JSON.stringify(nextCart));
         return nextCart;
       });
+      showToast(`🛒 Added ${quantity}x ${product.name} to cart!`, 'success');
     }
   };
 
@@ -395,11 +439,13 @@ function App() {
 export default function Root() {
   return (
     <AuthProvider>
-      <FavoritesProvider>
-        <CartProvider>
-          <App />
-        </CartProvider>
-      </FavoritesProvider>
+      <ToastProvider>
+        <FavoritesProvider>
+          <CartProvider>
+            <App />
+          </CartProvider>
+        </FavoritesProvider>
+      </ToastProvider>
     </AuthProvider>
   );
 }

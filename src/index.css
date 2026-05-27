@@ -243,3 +243,79 @@ input, select, textarea {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ==========================================
+   Tactile Button Transitions & Active States
+   ========================================== */
+button, .btn-primary, .btn-secondary, .btn-outline, .checkout-btn, .btn-add-cart, .btn-rfq, .main-submit-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:hover, 
+.btn-primary:hover, 
+.btn-secondary:hover, 
+.btn-outline:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+button:active, 
+.btn-primary:active, 
+.btn-secondary:active, 
+.btn-outline:active,
+.btn-add-cart:active,
+.btn-rfq:active,
+.checkout-btn:active,
+.main-submit-btn:active {
+  transform: scale(0.96) translateY(1px) !important;
+  filter: brightness(0.96);
+}
+
+/* ==========================================
+   Custom Toast Notifications
+   ========================================== */
+.custom-toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.custom-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  padding: 14px 20px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 16px -6px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid var(--primary);
+  min-width: 280px;
+  max-width: 380px;
+  animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.custom-toast.success { border-left-color: #10B981; }
+.custom-toast.error { border-left-color: #EF4444; }
+.custom-toast.warning { border-left-color: #F59E0B; }
+.custom-toast.info { border-left-color: #3B82F6; }
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(120%) scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
