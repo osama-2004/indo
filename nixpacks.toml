@@ -1,5 +1,5 @@
 # Force Node 20 for Vite 8 and react-router-dom 7 compatibility
-# Build cache bust: 2026-05-27T18:11
+# Build cache bust: 2026-05-27T18:16
 [variables]
 NIXPACKS_NODE_VERSION = "20"
 
@@ -8,8 +8,7 @@ nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake"]
 
 [phases.install]
 cmds = [
-  "npm install",
-  "npm run build",
+  "npm install --omit=dev --ignore-scripts",
   "cd server && npm install"
 ]
 
