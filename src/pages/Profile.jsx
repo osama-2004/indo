@@ -26,6 +26,7 @@ export default function Profile() {
 
   const [processingId, setProcessingId] = useState(null);
   const [processingAction, setProcessingAction] = useState('');
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedUser, setEditedUser] = useState({ name: '', email: '', phone: '' });
@@ -111,9 +112,9 @@ export default function Profile() {
   };
 
   const handleDeleteSample = async (sampleId) => {
-    if (!confirm('Are you sure you want to delete this sample request?')) return;
     setProcessingId(sampleId);
     setProcessingAction('delete');
+    setPendingDeleteId(null);
     try {
       await samplesAPI.deleteSample(sampleId);
       await loadSamples();
@@ -611,24 +612,34 @@ export default function Profile() {
                               </>
                             )}
                             {user.role === 'admin' && (
-                              <button 
-                                className="btn-sample-action delete"
-                                disabled={processingId !== null}
-                                onClick={() => handleDeleteSample(sample.id)}
-                                style={{
-                                  padding: '8px 16px',
-                                  borderRadius: '20px',
-                                  fontSize: '13px',
-                                  fontWeight: '600',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  backgroundColor: '#ef4444',
-                                  color: 'white',
-                                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                                }}
-                              >
-                                {processingId === sample.id && processingAction === 'delete' ? 'Deleting...' : '🗑️ Delete'}
-                              </button>
+                              pendingDeleteId === sample.id ? (
+                                <>
+                                  <span style={{ fontSize: '13px', color: '#374151', alignSelf: 'center' }}>Are you sure?</span>
+                                  <button
+                                    className="btn-sample-action delete"
+                                    disabled={processingId !== null}
+                                    onClick={() => handleDeleteSample(sample.id)}
+                                    style={{ padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', border: 'none', cursor: 'pointer', backgroundColor: '#ef4444', color: 'white', transition: 'all 0.2s' }}
+                                  >
+                                    {processingId === sample.id && processingAction === 'delete' ? 'Deleting...' : 'Confirm'}
+                                  </button>
+                                  <button
+                                    onClick={() => setPendingDeleteId(null)}
+                                    style={{ padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', border: '1px solid #d1d5db', cursor: 'pointer', backgroundColor: '#fff', color: '#374151', transition: 'all 0.2s' }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  className="btn-sample-action delete"
+                                  disabled={processingId !== null}
+                                  onClick={() => setPendingDeleteId(sample.id)}
+                                  style={{ padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', border: 'none', cursor: 'pointer', backgroundColor: '#ef4444', color: 'white', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                                >
+                                  🗑️ Delete
+                                </button>
+                              )
                             )}
                           </div>
                         )}

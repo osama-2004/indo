@@ -16,11 +16,16 @@ router.patch('/:id/approve', authenticateToken, requireRole('admin'), (req, res)
       return res.status(404).json({ success: false, message: 'Sample request not found' });
     }
 
+    // Role checks & ownership validation
+    if (req.user.role === 'supplier' && sample.supplier_id !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Access denied: cannot modify another supplier\'s sample requests' });
+    }
+
     db.prepare("UPDATE sample_requests SET status = 'Approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(id);
 
     res.json({
       success: true,
-      message: "Sample request approved",
+      message: "Sample request approved successfully",
       status: "Approved"
     });
   } catch (error) {
@@ -50,7 +55,7 @@ router.patch('/:id/reject', authenticateToken, requireRole('supplier', 'admin'),
 
     res.json({
       success: true,
-      message: "Sample request rejected",
+      message: "Sample request rejected successfully",
       status: "Rejected"
     });
   } catch (error) {
@@ -71,12 +76,17 @@ router.delete('/:id', authenticateToken, requireRole('admin'), (req, res) => {
       return res.status(404).json({ success: false, message: 'Sample request not found' });
     }
 
-    // Let's do a hard delete as requested ("Request removed from supplier/buyer dashboard & database")
+    // Role checks & ownership validation
+    if (req.user.role === 'supplier' && sample.supplier_id !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Access denied: cannot delete another supplier\'s sample requests' });
+    }
+
+    // Hard delete
     db.prepare('DELETE FROM sample_requests WHERE id = ?').run(id);
 
     res.json({
       success: true,
-      message: "Sample request deleted"
+      message: "Sample request deleted successfully"
     });
   } catch (error) {
     console.error('Delete sample request error:', error);
