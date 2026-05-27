@@ -204,19 +204,9 @@ export default function ServiceDetail() {
           {/* Action Row Component: Dynamic Order Controllers */}
           <div className="action-row">
             <div className="qty-selector">
-              <button onClick={() => {
-                const moqNum = parseInt((product.moq || '1').toString().replace(/\D/g, '')) || 1;
-                if (qty <= moqNum) {
-                  setQty(0);
-                } else {
-                  setQty(qty - 1);
-                }
-              }}>-</button>
+              <button onClick={() => setQty(Math.max(0, qty - 1))}>-</button>
               <span>{qty}</span>
-              <button onClick={() => {
-                const moqNum = parseInt((product.moq || '1').toString().replace(/\D/g, '')) || 1;
-                setQty(qty === 0 ? moqNum : qty + 1);
-              }}>+</button>
+              <button onClick={() => setQty(qty + 1)}>+</button>
             </div>
             {product.moq && (
               <span style={{ fontSize: '11px', color: '#6b7280', alignSelf: 'center' }}>MOQ: {product.moq}</span>
