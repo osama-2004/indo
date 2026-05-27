@@ -2,8 +2,42 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart, useAuth } from '../App';
 import { ordersAPI } from '../api/orders';
+import 'leaflet/dist/leaflet.css';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
 import './Checkout.css';
 
+// Fix Leaflet's default icon path issues in React
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// Helper for reverse geocoding
+const fetchAddress = async (lat, lng, setAddressCallback) => {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+    const data = await res.json();
+    if (data && data.display_name) {
+      setAddressCallback(data.display_name);
+    }
+  } catch (error) {
+    console.error("Error fetching address:", error);
+  }
+};
+
+// Map click handler component
+function LocationMarker({ position, setPosition, setAddress }) {
+  useMapEvents({
+    click(e) {
+      setPosition(e.latlng);
+      fetchAddress(e.latlng.lat, e.latlng.lng, setAddress);
+    },
+  });
+  return position === null ? null : <Marker position={position}></Marker>;
+}
 const VisaLogo = () => (
   <svg viewBox="0 0 36 24" width="36" height="24" className="payment-svg-logo visa" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
     <rect width="36" height="24" rx="4" fill="#1434CB"/>
@@ -27,6 +61,11 @@ export default function Checkout() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // ── Map State ───────────────────────────────────
+  const [showMap, setShowMap] = useState(false);
+  const [mapPosition, setMapPosition] = useState({ lat: 30.0444, lng: 31.2357 }); // Cairo
+  const [mapAddressTemp, setMapAddressTemp] = useState('');
 
   // ── Step control ────────────────────────────────
   const [step, setStep] = useState('details');
@@ -370,16 +409,26 @@ export default function Checkout() {
 
               <section className="form-section">
                 <h2 className="section-heading">Delivery Address</h2>
-                <div className="address-input-wrapper">
-                  <span className="location-icon">📍</span>
-                  <input
-                    type="text"
-                    placeholder="e.g., Cairo - Giza, Egypt"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
+                <div className="address-input-container">
+                  <div className="address-input-wrapper">
+                    <span className="location-icon">📍</span>
+                    <input
+                      type="text"
+                      placeholder="e.g., Cairo - Giza, Egypt"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      disabled={loading}
+                      required
+                    />
+                  </div>
+                  <button 
+                    type="button" 
+                    className="btn-map-pick" 
+                    onClick={() => setShowMap(true)}
                     disabled={loading}
-                    required
-                  />
+                  >
+                    🗺️ Choose from Map
+                  </button>
                 </div>
               </section>
 
@@ -573,6 +622,38 @@ export default function Checkout() {
                 onClick={() => { setShowSuccess(false); navigate('/home'); }}
               >
                 Go to Home
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ MAP MODAL ═══════ */}
+      {showMap && (
+        <div className="modal-overlay">
+          <div className="map-modal-card">
+            <div className="map-modal-header">
+              <h3>Select Delivery Location</h3>
+              <button className="map-close-btn" onClick={() => setShowMap(false)}>✕</button>
+            </div>
+            <div className="map-container-wrapper">
+              <MapContainer center={mapPosition} zoom={13} style={{ height: '100%', width: '100%', zIndex: 1 }}>
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <LocationMarker position={mapPosition} setPosition={setMapPosition} setAddress={setMapAddressTemp} />
+              </MapContainer>
+            </div>
+            <div className="map-selected-address">
+              <strong>Selected Address: </strong> {mapAddressTemp || 'Click on the map to select a location'}
+            </div>
+            <div className="map-modal-actions">
+              <button className="btn-map-confirm" onClick={() => {
+                if (mapAddressTemp) setAddress(mapAddressTemp);
+                setShowMap(false);
+              }}>
+                Confirm Address
               </button>
             </div>
           </div>

@@ -911,6 +911,11 @@ input[type="radio"]:checked + .custom-radio::after {
   .card-value {
     font-size: 12px !important;
   }
+
+  .card-field-row {
+    flex-direction: column;
+    gap: 12px;
+  }
   
   /* Stack checkout button controls vertically for easy touch interaction */
   .footer-buttons {
@@ -939,5 +944,119 @@ input[type="radio"]:checked + .custom-radio::after {
   
   .thanks-sub {
     font-size: 13px;
+  }
+}
+
+/* ── Map Modal Styles ────────────────────────────── */
+.map-modal-card {
+  background: white;
+  width: 90%;
+  max-width: 600px;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.map-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.map-modal-header h3 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 18px;
+}
+
+.map-close-btn {
+  background: #f1f5f9;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  color: #475569;
+}
+
+.map-container-wrapper {
+  height: 350px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+}
+
+.map-selected-address {
+  font-size: 14px;
+  color: #334155;
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.map-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-map-confirm {
+  background: #b33939;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.address-input-container {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.address-input-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1.5px solid #e2e8f0;
+  padding: 14px 18px;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  transition: border-color 0.2s;
+}
+
+.btn-map-pick {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #475569;
+  transition: background 0.2s;
+}
+
+.btn-map-pick:hover {
+  background: #e2e8f0;
+}
+
+@media (max-width: 480px) {
+  .address-input-container {
+    flex-direction: column;
+  }
+  .btn-map-pick {
+    padding: 14px 18px;
+    justify-content: center;
   }
 }
