@@ -97,4 +97,5 @@ app.use((err, req, res, next) => {
 // Launch server
 app.listen(PORT, () => {
   console.log(`🚀 IndusConnect Server running on port ${PORT}`);
+  console.log(`📦 Build version: 2026-05-27-v3 (review system + pre-built dist)`);
 });
