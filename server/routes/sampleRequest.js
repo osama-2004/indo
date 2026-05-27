@@ -7,18 +7,13 @@ const router = express.Router();
 // 1. Approve Sample Request
 // Method: PATCH
 // Endpoint: /sample-request/:id/approve
-router.patch('/:id/approve', authenticateToken, requireRole('supplier', 'admin'), (req, res) => {
+router.patch('/:id/approve', authenticateToken, requireRole('admin'), (req, res) => {
   const { id } = req.params;
 
   try {
     const sample = db.prepare('SELECT * FROM sample_requests WHERE id = ?').get(id);
     if (!sample) {
       return res.status(404).json({ success: false, message: 'Sample request not found' });
-    }
-
-    // Role checks & ownership validation
-    if (req.user.role === 'supplier' && sample.supplier_id !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Access denied: cannot modify another supplier\'s sample requests' });
     }
 
     db.prepare("UPDATE sample_requests SET status = 'Approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(id);
@@ -67,18 +62,13 @@ router.patch('/:id/reject', authenticateToken, requireRole('supplier', 'admin'),
 // 3. Delete Sample Request
 // Method: DELETE
 // Endpoint: /sample-request/:id
-router.delete('/:id', authenticateToken, requireRole('supplier', 'admin'), (req, res) => {
+router.delete('/:id', authenticateToken, requireRole('admin'), (req, res) => {
   const { id } = req.params;
 
   try {
     const sample = db.prepare('SELECT * FROM sample_requests WHERE id = ?').get(id);
     if (!sample) {
       return res.status(404).json({ success: false, message: 'Sample request not found' });
-    }
-
-    // Role checks & ownership validation
-    if (req.user.role === 'supplier' && sample.supplier_id !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Access denied: cannot delete another supplier\'s sample requests' });
     }
 
     // Let's do a hard delete as requested ("Request removed from supplier/buyer dashboard & database")

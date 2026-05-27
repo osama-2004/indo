@@ -566,24 +566,26 @@ export default function Profile() {
                           <div className="sample-card-actions" style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap', width: '100%' }}>
                             {statusLower === 'pending' && (
                               <>
-                                <button 
-                                  className="btn-sample-action approve"
-                                  disabled={processingId !== null}
-                                  onClick={() => handleApproveSample(sample.id)}
-                                  style={{
-                                    padding: '8px 16px',
-                                    borderRadius: '20px',
-                                    fontSize: '13px',
-                                    fontWeight: '600',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    backgroundColor: '#10b981',
-                                    color: 'white',
-                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                                  }}
-                                >
-                                  {processingId === sample.id && processingAction === 'approve' ? 'Approving...' : '✓ Approve'}
-                                </button>
+                                {user.role === 'admin' && (
+                                  <button 
+                                    className="btn-sample-action approve"
+                                    disabled={processingId !== null}
+                                    onClick={() => handleApproveSample(sample.id)}
+                                    style={{
+                                      padding: '8px 16px',
+                                      borderRadius: '20px',
+                                      fontSize: '13px',
+                                      fontWeight: '600',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      backgroundColor: '#10b981',
+                                      color: 'white',
+                                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                    }}
+                                  >
+                                    {processingId === sample.id && processingAction === 'approve' ? 'Approving...' : '✓ Approve'}
+                                  </button>
+                                )}
                                 <button 
                                   className="btn-sample-action reject"
                                   disabled={processingId !== null}
@@ -604,24 +606,26 @@ export default function Profile() {
                                 </button>
                               </>
                             )}
-                            <button 
-                              className="btn-sample-action delete"
-                              disabled={processingId !== null}
-                              onClick={() => handleDeleteSample(sample.id)}
-                              style={{
-                                padding: '8px 16px',
-                                borderRadius: '20px',
-                                fontSize: '13px',
-                                fontWeight: '600',
-                                border: 'none',
-                                cursor: 'pointer',
-                                backgroundColor: '#ef4444',
-                                color: 'white',
-                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                              }}
-                            >
-                              {processingId === sample.id && processingAction === 'delete' ? 'Deleting...' : '🗑️ Delete'}
-                            </button>
+                            {user.role === 'admin' && (
+                              <button 
+                                className="btn-sample-action delete"
+                                disabled={processingId !== null}
+                                onClick={() => handleDeleteSample(sample.id)}
+                                style={{
+                                  padding: '8px 16px',
+                                  borderRadius: '20px',
+                                  fontSize: '13px',
+                                  fontWeight: '600',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  backgroundColor: '#ef4444',
+                                  color: 'white',
+                                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                }}
+                              >
+                                {processingId === sample.id && processingAction === 'delete' ? 'Deleting...' : '🗑️ Delete'}
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
