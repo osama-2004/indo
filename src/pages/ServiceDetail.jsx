@@ -37,7 +37,7 @@ export default function ServiceDetail() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('reviews');
-  const [qty, setQty] = useState(1); 
+  const [qty, setQty] = useState(0); 
   const [visibleReviews, setVisibleReviews] = useState(3);
 
   // Sample request state
@@ -51,8 +51,6 @@ export default function ServiceDetail() {
       try {
         const data = await productsAPI.getProduct(id);
         setProduct(data);
-        const moqNum = parseInt((data?.moq || '1').toString().replace(/\D/g, '')) || 1;
-        setQty(moqNum);
       } catch (err) {
         console.error("Error loading product detail from server:", err);
       } finally {
@@ -208,10 +206,17 @@ export default function ServiceDetail() {
             <div className="qty-selector">
               <button onClick={() => {
                 const moqNum = parseInt((product.moq || '1').toString().replace(/\D/g, '')) || 1;
-                setQty(Math.max(moqNum, qty - 1));
+                if (qty <= moqNum) {
+                  setQty(0);
+                } else {
+                  setQty(qty - 1);
+                }
               }}>-</button>
               <span>{qty}</span>
-              <button onClick={() => setQty(qty + 1)}>+</button>
+              <button onClick={() => {
+                const moqNum = parseInt((product.moq || '1').toString().replace(/\D/g, '')) || 1;
+                setQty(qty === 0 ? moqNum : qty + 1);
+              }}>+</button>
             </div>
             {product.moq && (
               <span style={{ fontSize: '11px', color: '#6b7280', alignSelf: 'center' }}>MOQ: {product.moq}</span>
