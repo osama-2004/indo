@@ -282,6 +282,58 @@ export function initDB() {
     db.exec(`ALTER TABLE sample_requests ADD COLUMN deleted_at DATETIME`);
   } catch (_) { /* already exists */ }
 
+  // 11. Product Reviews Table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS product_reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+      comment TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(product_id, user_id)
+    )
+  `);
+
+  // Trigger: recalculate product rating + review count after insert
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS update_product_rating_on_insert
+    AFTER INSERT ON product_reviews
+    BEGIN
+      UPDATE products
+      SET rating  = (SELECT ROUND(AVG(rating)) FROM product_reviews WHERE product_id = NEW.product_id),
+          reviews = (SELECT COUNT(*) FROM product_reviews WHERE product_id = NEW.product_id)
+      WHERE id = NEW.product_id;
+    END
+  `);
+
+  // Trigger: recalculate product rating + review count after delete
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS update_product_rating_on_delete
+    AFTER DELETE ON product_reviews
+    BEGIN
+      UPDATE products
+      SET rating  = COALESCE((SELECT ROUND(AVG(rating)) FROM product_reviews WHERE product_id = OLD.product_id), 0),
+          reviews = (SELECT COUNT(*) FROM product_reviews WHERE product_id = OLD.product_id)
+      WHERE id = OLD.product_id;
+    END
+  `);
+
+  // Trigger: recalculate product rating + review count after update
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS update_product_rating_on_update
+    AFTER UPDATE ON product_reviews
+    BEGIN
+      UPDATE products
+      SET rating  = (SELECT ROUND(AVG(rating)) FROM product_reviews WHERE product_id = NEW.product_id),
+          reviews = (SELECT COUNT(*) FROM product_reviews WHERE product_id = NEW.product_id)
+      WHERE id = NEW.product_id;
+    END
+  `);
+
   seedData();
 }
 
